@@ -1,6 +1,6 @@
 ---
 name: prospecting
-description: Build target account lists (TAL) using the Tiga API. Use this skill when the user wants to build a TAL from an ICP, natural language prompt, seed accounts, conference attendee lists, or scraped company data. Covers ICP-to-TAL, prompt-to-TAL, seed-to-lookalikes, conference list, and scraped page workflows.
+description: "Build target account lists (TAL) using the Tiga API. Use this skill whenever the user wants to find companies to target, build a TAL, search for accounts matching an ICP, find lookalike companies, import conference attendee lists, or turn a natural language description into a structured prospect list. Also trigger when the user mentions Apollo search, firmographics, account discovery, 'find me companies like X', or any task about identifying which companies to go after."
 ---
 
 # Prospecting Skill
@@ -9,8 +9,7 @@ Build target account lists (TALs) from various starting points using Tiga + Apol
 
 **Before starting:** Read `tiga-gtm/docs/api-reference.md` for endpoint details. Read `tiga-gtm/docs/merge-fields.md` when creating signal prompts.
 
-**Base URL:** `https://app.tigalabs.com`
-**Auth:** `X-Tiga-Auth: $TIGA_API_KEY`
+**Next steps after prospecting:** Once you have a TAL, use the **contact-discovery** skill to find people at those accounts, or the **signals** skill to score/filter them first.
 
 ---
 

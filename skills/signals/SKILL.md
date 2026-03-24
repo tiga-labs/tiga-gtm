@@ -1,6 +1,6 @@
 ---
 name: signals
-description: Create, run, and score AI signals on Tiga lists. Use this skill when the user wants to define buying signals, run signal research on account or people lists, stack multiple signals for scoring, or build multi-dimensional account scoring models. Covers single signals, stacked signals, and composite scoring workflows.
+description: "Create, run, and score AI signals on Tiga lists. Use this skill whenever the user wants to research accounts or people with AI — detecting buying signals like recent funding, hiring patterns, tech stack, competitive usage, or company growth. Also trigger when the user asks 'which of my accounts recently raised funding?', 'score these accounts', 'prioritize my pipeline', 'are any of these companies hiring for X?', or any task about filtering, scoring, or researching accounts/contacts using AI-powered data."
 ---
 
 # Signals Skill
@@ -9,8 +9,7 @@ Create and run AI-powered signals on Tiga lists to research, filter, and score a
 
 **Before starting:** Read `tiga-gtm/docs/api-reference.md` for endpoint details. Read `tiga-gtm/docs/merge-fields.md` for available template variables in signal prompts. Read `tiga-gtm/docs/async-patterns.md` for polling signal computation status.
 
-**Base URL:** `https://app.tigalabs.com`
-**Auth:** `X-Tiga-Auth: $TIGA_API_KEY`
+**Related skills:** Use **prospecting** to build the account list first. After scoring, use **contact-discovery** to find people at top accounts, then **outreach** to enroll them in sequences.
 
 ---
 

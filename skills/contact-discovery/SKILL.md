@@ -1,6 +1,6 @@
 ---
 name: contact-discovery
-description: Find and enrich contacts using the Tiga API. Use this skill when the user wants to find people at target accounts by role or title, enrich contacts with email and phone via waterfall enrichment, pull contacts from LinkedIn Sales Navigator queries, or set up automated contact discovery. Covers TAL-to-contacts, Sales Nav queries, and recurring pull workflows.
+description: "Find and enrich contacts using the Tiga API. Use this skill whenever the user wants to find people at companies, discover contacts by role or title, enrich contacts with email and phone via waterfall enrichment, pull contacts from LinkedIn or Sales Navigator queries, or set up automated contact discovery. Also trigger when the user says 'find me the VP of...', 'get contact info for...', 'enrich these leads', 'who works at X', or any task about finding or enriching individual people."
 ---
 
 # Contact Discovery Skill
@@ -9,8 +9,7 @@ Find specific roles at target accounts and enrich contacts with verified email a
 
 **Before starting:** Read `tiga-gtm/docs/api-reference.md` for endpoint details. Read `tiga-gtm/docs/async-patterns.md` for the polling pattern used by Find People Agent and Waterfall Enrich APIs.
 
-**Base URL:** `https://app.tigalabs.com`
-**Auth:** `X-Tiga-Auth: $TIGA_API_KEY`
+**Related skills:** Use **prospecting** first if you need to build the target account list. After enrichment, use **outreach** to personalize messaging and enroll contacts in sequences.
 
 ---
 

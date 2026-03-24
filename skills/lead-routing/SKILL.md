@@ -1,6 +1,6 @@
 ---
 name: lead-routing
-description: Route and filter leads using the Tiga API. Use this skill when the user wants to filter inbound leads against ICP criteria or customer blacklists, route leads to salespeople based on signal values (location, size, industry), handle website visitor triggers (RB2B), or find CEO connections for new pipeline accounts. Covers ICP/blacklist filtering, signal-based routing, visitor triggers, and executive connection workflows.
+description: "Route and filter leads using the Tiga API. Use this skill whenever the user wants to filter inbound leads against ICP criteria, check against customer blacklists, route leads to salespeople by territory or segment, handle website visitor triggers (RB2B), or find CEO connections for executive intros. Also trigger when the user says 'qualify these leads', 'route to the right rep', 'filter out existing customers', 'a visitor hit our website', or any task about deciding what to do with incoming leads."
 ---
 
 # Lead Routing Skill
@@ -9,8 +9,7 @@ Filter, qualify, and route leads using Tiga signals and sequences.
 
 **Before starting:** Read `tiga-gtm/docs/api-reference.md` for endpoint details. Read `tiga-gtm/docs/merge-fields.md` for signal prompt variables. Read `tiga-gtm/docs/async-patterns.md` for polling patterns.
 
-**Base URL:** `https://app.tigalabs.com`
-**Auth:** `X-Tiga-Auth: $TIGA_API_KEY`
+**Related skills:** After routing, use **outreach** to enroll qualified leads in sequences. Workflow E (CEO Connection) uses the same Find People Agent + enrich pattern as **contact-discovery**.
 
 ---
 

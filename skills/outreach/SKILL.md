@@ -1,6 +1,6 @@
 ---
 name: outreach
-description: Manage outreach sequences and personalize messaging using the Tiga API. Use this skill when the user wants to add people to sequences, monitor sequence performance metrics, personalize outreach messaging with AI signals, or manage sales sequences. Covers personalized outreach, sequence enrollment, and performance monitoring.
+description: "Manage outreach sequences and personalize messaging using the Tiga API. Use this skill whenever the user wants to add people to email sequences, personalize cold outreach with AI, check sequence performance metrics (open rates, reply rates), or manage sales cadences. Also trigger when the user says 'add them to a sequence', 'personalize these emails', 'how is my sequence performing?', 'write outreach for this list', or any task about sending, personalizing, or measuring sales outreach."
 ---
 
 # Outreach Skill
@@ -9,8 +9,7 @@ Manage sequences, personalize messaging, and monitor outreach performance.
 
 **Before starting:** Read `tiga-gtm/docs/api-reference.md` for Sequences API endpoint details. Read `tiga-gtm/docs/merge-fields.md` when creating personalization signals.
 
-**Base URL:** `https://app.tigalabs.com`
-**Auth:** `X-Tiga-Auth: $TIGA_API_KEY`
+**Related skills:** Use **contact-discovery** first to find and enrich contacts. Use **signals** to generate personalization data. Use **lead-routing** if leads need qualification before enrollment.
 
 ---
 

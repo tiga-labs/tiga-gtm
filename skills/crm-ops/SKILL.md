@@ -1,16 +1,15 @@
 ---
 name: crm-ops
-description: CRM hygiene and sync operations using the Tiga API. Use this skill when the user wants to detect people who changed jobs, fill missing roles or title gaps in CRM accounts, update stale or outdated contacts, clean field formatting, or sync data between Tiga and HubSpot/Salesforce. Covers people-on-the-move, role gap filling, stale contact updates, and field cleanup.
+description: "CRM hygiene and sync operations using the Tiga API. Use this skill whenever the user wants to detect people who changed jobs, fill missing roles or title gaps in CRM accounts, update stale or outdated contacts, clean field formatting, or sync data between Tiga and HubSpot/Salesforce. Also trigger when the user says 'who left their company?', 'are my contacts still current?', 'standardize job titles', 'find missing contacts at my accounts', or any CRM data quality task. Note: for building a reusable bulk ops *tool* with a web UI, use crm-bulk-ops instead."
 ---
 
 # CRM Ops Skill
 
-Maintain CRM data quality using Tiga signals, enrichment, and CRM integrations.
+Maintain CRM data quality using Tiga signals, enrichment, and CRM integrations. This skill executes CRM hygiene workflows directly via API calls — for building a standalone tool with a web UI, see the **crm-bulk-ops** skill.
 
 **Before starting:** Read `tiga-gtm/docs/api-reference.md` for endpoint details. Read `tiga-gtm/docs/merge-fields.md` for signal prompt variables. Read `tiga-gtm/docs/async-patterns.md` for polling patterns.
 
-**Base URL:** `https://app.tigalabs.com`
-**Auth:** `X-Tiga-Auth: $TIGA_API_KEY`
+**Related skills:** Workflow B (Fill Role/Title Gaps) uses the same Find People Agent + enrich pattern as **contact-discovery**. For updating CRM records after signal runs, you'll need the OAuth token endpoints documented in `tiga-gtm/docs/api-reference.md`.
 
 ---
 
