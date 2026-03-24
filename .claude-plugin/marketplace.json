@@ -1,24 +1,32 @@
 {
-  "marketplace": {
-    "name": "Tiga GTM Marketplace",
-    "description": "A collection of GTM workflow plugins for the Tiga sales intelligence platform.",
-    "owner": {
-      "name": "Tiga Labs",
-      "url": "https://tiga.ai",
-      "email": "support@tigalabs.com"
-    }
-  },
-  "plugins": [
-    {
-      "id": "tiga-gtm",
-      "name": "Tiga GTM",
-      "description": "GTM workflow skills for the Tiga sales intelligence platform. Build target account lists, find and enrich contacts, run AI signals, manage CRM operations, route leads, orchestrate outreach sequences, and build bulk CRM ops tools.",
-      "version": "1.0.0",
-      "source": {
-        "path": "./"
-      },
-      "categories": ["sales", "crm", "outreach", "data-enrichment"],
-      "tags": ["gtm", "sales-intelligence", "lead-routing", "sequences"]
-    }
-  ]
+	"name": "Tiga GTM Marketplace",
+	"description": "A collection of GTM workflow plugins for the Tiga sales intelligence platform.",
+	"owner": {
+		"name": "Tiga Labs",
+		"url": "https://tiga.ai",
+		"email": "support@tigalabs.com"
+	},
+	"plugins": [
+		{
+			"id": "tiga-gtm",
+			"name": "Tiga GTM",
+			"description": "GTM workflow skills for the Tiga sales intelligence platform. Build target account lists, find and enrich contacts, run AI signals, manage CRM operations, route leads, orchestrate outreach sequences, and build bulk CRM ops tools.",
+			"version": "1.0.0",
+			"source": {
+				"path": "./"
+			},
+			"categories": [
+				"sales",
+				"crm",
+				"outreach",
+				"data-enrichment"
+			],
+			"tags": [
+				"gtm",
+				"sales-intelligence",
+				"lead-routing",
+				"sequences"
+			]
+		}
+	]
 }
