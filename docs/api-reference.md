@@ -12,10 +12,11 @@ Content-Type: application/json
 
 Store the key in an env var: `export TIGA_API_KEY="your_key_here"`
 
-**Pagination header** (optional, on list endpoints):
-```json
-Tiga-Pagination: {"page": 1, "page_size": 25, "sort_by": "created_at", "sort_order": "desc"}
+**Pagination header** (REQUIRED for paginated list endpoints like `GET /api/v1/accounts` and `GET /api/v1/people`):
 ```
+Tiga-Pagination: {"page": 1, "page_size": 100, "sort_by": "name", "sort_order": "asc"}
+```
+**IMPORTANT:** Query parameters (`?page=2&per_page=100`) do NOT work for pagination. You MUST use the `Tiga-Pagination` header with JSON. Without this header, the API always returns only the first page of results regardless of query params. Increment `"page"` to paginate through results. Use `total_count` from the response to know when to stop.
 
 **Filter header** (optional, on list endpoints):
 ```json
@@ -30,7 +31,7 @@ Tiga-Filter: {"search_term": "acme", "list_id": "uuid", "sequence_id": "uuid", "
 |--------|------|-------------|
 | GET | `/api/v1/accounts` | List accounts (supports Tiga-Pagination, Tiga-Filter) |
 | POST | `/api/v1/account` | Create account |
-| GET | `/api/v1/account/:id` | Get single account |
+| GET | `/api/v1/account/:id` | Get single account (includes `custom_columns` with signal values) |
 | PUT | `/api/v1/account/:id` | Update account |
 | DELETE | `/api/v1/accounts` | Bulk delete (requires People Admin) |
 
@@ -42,7 +43,10 @@ Tiga-Filter: {"search_term": "acme", "list_id": "uuid", "sequence_id": "uuid", "
   "linkedin_url": "https://www.linkedin.com/company/acme"
 }
 ```
-- `domain` and `linkedin_url` must be unique — returns `409 Conflict` if duplicate.
+- `domain` and `linkedin_url` must be unique — returns `409 Conflict` (plain text body, not JSON) if duplicate.
+- The 409 body is a string like: `Account with LinkedIn URL "..." already owned by <user>`. It does NOT contain the existing account's ID.
+- **To resolve existing account IDs:** Pre-fetch all accounts using `GET /api/v1/accounts` with `Tiga-Pagination` header and build a lookup map (by normalized LinkedIn URL and lowercase name) BEFORE creating accounts. Match CSV rows against the lookup map first, and only call `POST /api/v1/account` for unmatched rows.
+- **Set the `website` field** when creating or updating accounts if your signals use `{{.AccountWebsite}}` in prompts. The `domain` field does NOT satisfy the `AccountWebsite` merge field — you must explicitly set `website` via `PUT /api/v1/account/:id` with `{"website": "https://example.com"}`.
 
 **Delete accounts body:**
 ```json
@@ -149,13 +153,27 @@ Optional fields: `object_ids`, `excluded_object_ids`, `filter`, `from_list_id`, 
 }
 ```
 
+**Attach signals to existing list** (`PUT /api/v1/lists/:id`):
+```json
+{
+  "list": {
+    "name": "List Name",
+    "list_signals": {
+      "<signal-id-1>": true,
+      "<signal-id-2>": true
+    }
+  }
+}
+```
+**Note:** The `name` field is required in the PUT body even if you're only updating `list_signals`.
+
 **Run signals body** (`POST /api/v1/lists/:id/run-all-signal`):
 ```json
 {
   "signal_ids": ["uuid1", "uuid2"]
 }
 ```
-Signal IDs optional; uses list's saved configuration if omitted. Jobs queue asynchronously.
+Signal IDs optional; uses list's saved configuration if omitted. Jobs queue asynchronously. **Response is plain text `OK` (status 200), not JSON.** Signals that already have terminal results (status 1, 2, or 3) are NOT re-computed — delete and recreate the signal for fresh results.
 
 **Bulk status request** (check if signals are done):
 ```json
@@ -168,11 +186,13 @@ POST /api/v1/lists-signal/bulk-status
 ```
 Use `people_ids` instead of `account_ids` for person lists (not both).
 
+**Bulk status response shape:** See `async-patterns.md` for the full response. Key: `signal_status_map[account_id][signal_id].status` (note: account first, then signal).
+
 **Status values:**
 - `0` — Not computed yet
-- `1` — Done (success)
+- `1` — Done (success) — result in `.value`
 - `2` — Failed
-- `3` — N/A (signal not applicable to this record)
+- `3` — N/A (missing merge field dependency, check `dependencies_missing` array)
 
 ---
 
@@ -180,7 +200,7 @@ Use `people_ids` instead of `account_ids` for person lists (not both).
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/v1/signals` | List signals |
+| GET | `/api/v1/signals` | List signals (returns JSON array, not object) |
 | GET | `/api/v1/signal/:id` | Get single signal |
 | POST | `/api/v1/signal` | Create signal |
 | PUT | `/api/v1/signal/:id` | Update signal |

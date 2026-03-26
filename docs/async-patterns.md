@@ -46,10 +46,46 @@ POST /api/v1/lists-signal/bulk-status
 
 Use `people_ids` instead of `account_ids` for person lists (not both).
 
-**Status values:**
+**Response shape:**
+```json
+{
+  "is_running_signals_for_list": true,
+  "is_running_signals_for_page": false,
+  "signal_status_map": {
+    "<account-id>": {
+      "<signal-id>": {
+        "custom_column_id": "<signal-id>",
+        "label": "Signal Label",
+        "value": "The computed result text",
+        "status": 1,
+        "dependencies_missing": [],
+        "has_running_job": false,
+        "has_pending_job": false
+      }
+    }
+  },
+  "signal_status_progress": {
+    "total_complete": 42,
+    "total_members": 250,
+    "percentage_completed": 17
+  }
+}
+```
+
+**Key:** The status map is nested as `signal_status_map[account_id][signal_id]`, NOT `signal_status_map[signal_id][account_id]`.
+
+**Status values (in each signal entry):**
 - `0` — Not computed yet
-- `1` — Done (success)
+- `1` — Done (success) — `value` field contains the result
 - `2` — Failed
-- `3` — N/A (signal not applicable)
+- `3` — N/A (signal not applicable, e.g. missing merge field dependency)
+
+**Important: status 3 = missing dependencies.** If `dependencies_missing` includes a field like `"AccountWebsite"`, the signal will NOT compute. Ensure the required merge field is populated on the account (e.g., set `website` via `PUT /api/v1/account/:id`) before running signals. Status 3 is terminal — re-running `run-all-signal` will NOT retry N/A signals; you must create a new signal.
+
+**Signal computation rate:** Approximately 1-2 signals complete per 10-second interval. For 250 accounts × 4 signals = 1000 pairs, expect 60-90 minutes. Set poll timeout accordingly.
 
 Poll until all statuses are non-zero (1, 2, or 3).
+
+## Reusing Signals
+
+Signals persist across runs. Use `GET /api/v1/signals` (returns a JSON array) to find existing signals by label before creating duplicates. However, **cached signal results (status 1 or 3) are not re-computed** when you call `run-all-signal` again. If you need fresh results (e.g., after fixing a missing dependency), delete the old signal via `DELETE /api/v1/signal/:id` and create a new one.

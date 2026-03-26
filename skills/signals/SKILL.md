@@ -7,9 +7,17 @@ description: "Create, run, and score AI signals on Tiga lists. Use this skill wh
 
 Create and run AI-powered signals on Tiga lists to research, filter, and score accounts or people.
 
-**Before starting:** Read `tiga-gtm/docs/api-reference.md` for endpoint details. Read `tiga-gtm/docs/merge-fields.md` for available template variables in signal prompts. Read `tiga-gtm/docs/async-patterns.md` for polling signal computation status.
+**Before starting:** Read `tiga-gtm/docs/api-reference.md` for endpoint details. Read `tiga-gtm/docs/merge-fields.md` for available template variables in signal prompts. Read `tiga-gtm/docs/async-patterns.md` for polling signal computation status and the actual bulk-status response shape.
 
 **Related skills:** Use **prospecting** to build the account list first. After scoring, use **contact-discovery** to find people at top accounts, then **outreach** to enroll them in sequences.
+
+**Critical implementation notes:**
+- **Pagination:** Use `Tiga-Pagination` header (NOT query params) for `GET /api/v1/accounts`. See api-reference.md.
+- **Merge field dependencies:** If prompts use `{{.AccountWebsite}}`, the account's `website` field must be populated (the `domain` field does NOT satisfy this). Set via `PUT /api/v1/account/:id {"website": "https://..."}`. Missing dependencies cause status 3 (N/A) which is terminal and not retried.
+- **Signal reuse:** Check `GET /api/v1/signals` before creating duplicates. Cached results are NOT re-computed by `run-all-signal`. Delete + recreate for fresh results.
+- **Computation speed:** ~1-2 signal-account pairs complete per 10s. Plan for 60-90 min for 250 accounts × 4 signals. Build scripts with generous timeouts (90-120 min).
+- **409 handling:** Account creation returns plain text 409 (no ID). Pre-fetch all accounts into a lookup map instead of relying on 409 responses.
+- **Results-only mode:** For scripts, implement a `--results-only` flag that skips creation/polling and just fetches existing signal values from `GET /api/v1/account/:id` → `custom_columns[signal_id].value`.
 
 ---
 
@@ -67,9 +75,9 @@ curl -X POST "https://app.tigalabs.com/api/v1/lists-signal/bulk-status" \
     "list_id": "<list-id>"
   }'
 ```
-   Wait until all statuses are non-zero (1=done, 2=failed, 3=N/A). Poll every 5-10 seconds.
+   Response is keyed as `signal_status_map[account_id][signal_id].status`. Wait until all statuses are non-zero (1=done, 2=failed, 3=N/A). Poll every 10 seconds. See `async-patterns.md` for the full response shape.
 
-5. **Filter results** — Read signal values for each account via `GET /api/v1/account/:id` or person via `GET /api/v1/person/:id/signals`. Keep records where signal output starts with "yes" (or matches desired criteria).
+5. **Filter results** — Read signal values for each account via `GET /api/v1/account/:id`. Signal values are in `custom_columns[signal_id].value`. For people: `GET /api/v1/person/:id/signals`. Keep records where signal output starts with "yes" (or matches desired criteria).
 
 6. **Create a filtered sub-list** with qualifying records using `POST /api/v1/lists` and `POST /api/v1/lists/:id/add-members`.
 
