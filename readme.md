@@ -32,4 +32,5 @@ Once installed, the Tiga GTM skills will appear in your personal plugins list an
 - **CRM Ops** — Detect job changes, fill gaps, and clean CRM data
 - **Lead Routing** — Filter and route inbound leads
 - **Outreach** — Manage sequences and personalize messaging
+- **Flow Builder** — Construct `play_type: flow` agent flows (HubSpot import, enrich, research, ICP filter, signal gate, sequence hand-off)
 - **CRM Bulk Ops** — Build Go web apps for batch CRM operations

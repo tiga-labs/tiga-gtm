@@ -54,6 +54,11 @@ Key workflows: AI-personalized outreach, sequence enrollment, sequence performan
 
 Key workflows: Scaffold a Go web app with worker pool, CSV logging, stop/resume, dark-themed UI, Salesforce/HubSpot batch APIs.
 
+### flow-builder
+**When to use:** User wants to programmatically construct a Tiga `play_type: flow` sequence (an agent-style automation, not a plain outreach cadence). Anything about building or configuring multi-step flows that import from HubSpot, run Waterfall Enrich, do LinkedIn research, gate on ICP/signals, or hand off to another sequence.
+
+Key workflows: Webinar inbound flow, agent flow construction via curl, per-step config (SyncFromHubspotFeeder, WaterfallEnrich, LinkedInResearch, AccountIcpFilter, RunSignal, AddToSequence).
+
 ---
 
 ## Choosing Between Skills
@@ -66,6 +71,7 @@ Key workflows: Scaffold a Go web app with worker pool, CSV logging, stop/resume,
 | "Who changed jobs?" / "Clean up titles in CRM" | crm-ops |
 | "Route these leads to the right rep" / "Filter inbound leads" | lead-routing |
 | "Personalize emails for this list" / "Add them to a sequence" | outreach |
+| "Build me an agent flow" / "Create a webinar inbound flow with HubSpot import + enrich" | flow-builder |
 | "Build a tool to clean Salesforce names" / "I need a web app for bulk CRM updates" | crm-bulk-ops |
 
 **Composing skills:** Many GTM workflows chain multiple skills together. For example: prospecting (build TAL) → contact-discovery (find people) → signals (score) → outreach (personalize + enroll). Follow the natural pipeline order and invoke each skill as you reach that stage.
