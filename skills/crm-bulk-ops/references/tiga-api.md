@@ -148,6 +148,23 @@ Discover custom merge fields: `GET /api/v1/account/columns?mode=merge_fields`
 | `/api/v1/lists/:id/stop-all-signal` | POST | Stop signal computation |
 | `/api/v1/lists-signal/bulk-status` | POST | Poll signal compute status. Values: 0=not computed, 1=success, 2=failed, 3=N/A |
 
+## HubSpot API
+
+```
+POST /api/v1/hubspot/create-or-update-contact
+Body: {
+  "person_id": "<uuid>",                  // required
+  "hubspot_owner_id": "<hs-owner-id>",    // optional; only applied on new contact creation
+  "sync_account_association": false,       // optional; links contact to HubSpot company
+  "field_mappings": {"title": "jobtitle"},// optional; tiga-field → hubspot-field; omit for defaults
+  "find_person_by": {
+    "email": true,                         // search by email before creating (default true)
+    "linkedin_url": true                   // search by LinkedIn URL before creating (default true)
+  }
+}
+Response: {"hubspot_contact_id": "...", "contact_created": true}
+```
+
 ## Sequences API
 
 | Endpoint | Method | Description |

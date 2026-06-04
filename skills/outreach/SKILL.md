@@ -15,48 +15,36 @@ Manage sequences, personalize messaging, and monitor outreach performance.
 
 ## Workflow A: Personalized Outreach
 
-**Use when:** You want to generate personalized messaging for each contact in a list before adding them to a sequence.
+**Use when:** You want to build a sequence step with AI-generated personalized content for each contact.
 
-### Steps
+**Recommended approach:** Use `tiga-gtm/skills/sequence-step/SKILL.md` (Workflow A) for the full step + p13n setup. That skill covers: deactivate sequence → add step → create p13n → insert `{{.key}}` into template → activate.
 
-1. **Create a personalization signal:**
+**Alternative approach (pre-compute on a list):** If you want to run a personalization signal on a list *before* adding people to a sequence (e.g., to review the output first), use a `type: "p13n"` signal:
+
 ```bash
-curl -X POST "https://app.tigalabs.com/api/v1/signal" \
+curl -X POST "https://app.tigalabs.com/api/v1/p13n" \
   -H "X-Tiga-Auth: $TIGA_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "label": "Outreach Personalization",
-    "is_computed_column": true,
-    "type": "text",
-    "computed_config": {
-      "type": "gpt",
-      "prompt": "Write a personalized 2-sentence opening for a cold email to {{.FirstName}} {{.LastName}}, {{.Title}} at {{.AccountName}}. Reference something specific about their background ({{.PersonLi_Headline}}, {{.PersonLi_Experience}}) or their company ({{.AccountWebsite}}). The email is about: <describe your product/value prop>.",
-      "is_account_insight": false,
-      "can_use_web_search": true,
-      "word_limit": 80,
-      "temperature": 0.7
-    }
+    "label": "Outreach Opening",
+    "prompt": "Write a personalized 2-sentence opening for a cold email to {{.FirstName}} {{.LastName}}, {{.Title}} at {{.AccountName}}. Reference something specific about their background ({{.PersonLi_Headline}}, {{.PersonLi_Experience}}) or their company. The email is about: <describe your value prop>.",
+    "word_limit": 80,
+    "default_value": "I came across your profile and was impressed by your work.",
+    "temperature": 0.7
   }'
 ```
 
-2. **Attach signal to the people list and run:**
+Then run on a list:
 ```bash
 curl -X POST "https://app.tigalabs.com/api/v1/lists/<list-id>/run-all-signal" \
   -H "X-Tiga-Auth: $TIGA_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"signal_ids": ["<signal-id>"]}'
+  -d '{"signal_ids": ["<p13n-id>"]}'
 ```
 
-3. **Poll for completion** via `POST /api/v1/lists-signal/bulk-status` (use `people_ids` for person lists).
+Poll: `POST /api/v1/lists-signal/bulk-status` (use `people_ids` for person lists).
 
-4. **Read personalization output** for each person:
-```bash
-curl -X GET "https://app.tigalabs.com/api/v1/person/<person-id>/signals" \
-  -H "X-Tiga-Auth: $TIGA_API_KEY"
-```
-   The signal's `insight` field contains the personalized text.
-
-5. **Use the personalization** — The signal output is available as a merge field in sequence email templates, or can be used to craft manual outreach.
+Read output: `GET /api/v1/person/<person-id>/signals`
 
 ---
 

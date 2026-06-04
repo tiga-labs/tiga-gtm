@@ -12,11 +12,10 @@ Content-Type: application/json
 
 Store the key in an env var: `export TIGA_API_KEY="your_key_here"`
 
-**Pagination header** (REQUIRED for paginated list endpoints like `GET /api/v1/accounts` and `GET /api/v1/people`):
+**Pagination header** (optional, on list endpoints):
+```json
+Tiga-Pagination: {"page": 1, "page_size": 25, "sort_by": "created_at", "sort_order": "desc"}
 ```
-Tiga-Pagination: {"page": 1, "page_size": 100, "sort_by": "name", "sort_order": "asc"}
-```
-**IMPORTANT:** Query parameters (`?page=2&per_page=100`) do NOT work for pagination. You MUST use the `Tiga-Pagination` header with JSON. Without this header, the API always returns only the first page of results regardless of query params. Increment `"page"` to paginate through results. Use `total_count` from the response to know when to stop.
 
 **Filter header** (optional, on list endpoints):
 ```json
@@ -31,7 +30,7 @@ Tiga-Filter: {"search_term": "acme", "list_id": "uuid", "sequence_id": "uuid", "
 |--------|------|-------------|
 | GET | `/api/v1/accounts` | List accounts (supports Tiga-Pagination, Tiga-Filter) |
 | POST | `/api/v1/account` | Create account |
-| GET | `/api/v1/account/:id` | Get single account (includes `custom_columns` with signal values) |
+| GET | `/api/v1/account/:id` | Get single account |
 | PUT | `/api/v1/account/:id` | Update account |
 | DELETE | `/api/v1/accounts` | Bulk delete (requires People Admin) |
 
@@ -43,10 +42,7 @@ Tiga-Filter: {"search_term": "acme", "list_id": "uuid", "sequence_id": "uuid", "
   "linkedin_url": "https://www.linkedin.com/company/acme"
 }
 ```
-- `domain` and `linkedin_url` must be unique — returns `409 Conflict` (plain text body, not JSON) if duplicate.
-- The 409 body is a string like: `Account with LinkedIn URL "..." already owned by <user>`. It does NOT contain the existing account's ID.
-- **To resolve existing account IDs:** Pre-fetch all accounts using `GET /api/v1/accounts` with `Tiga-Pagination` header and build a lookup map (by normalized LinkedIn URL and lowercase name) BEFORE creating accounts. Match CSV rows against the lookup map first, and only call `POST /api/v1/account` for unmatched rows.
-- **Set the `website` field** when creating or updating accounts if your signals use `{{.AccountWebsite}}` in prompts. The `domain` field does NOT satisfy the `AccountWebsite` merge field — you must explicitly set `website` via `PUT /api/v1/account/:id` with `{"website": "https://example.com"}`.
+- `domain` and `linkedin_url` must be unique — returns `409 Conflict` if duplicate.
 
 **Delete accounts body:**
 ```json
@@ -153,27 +149,13 @@ Optional fields: `object_ids`, `excluded_object_ids`, `filter`, `from_list_id`, 
 }
 ```
 
-**Attach signals to existing list** (`PUT /api/v1/lists/:id`):
-```json
-{
-  "list": {
-    "name": "List Name",
-    "list_signals": {
-      "<signal-id-1>": true,
-      "<signal-id-2>": true
-    }
-  }
-}
-```
-**Note:** The `name` field is required in the PUT body even if you're only updating `list_signals`.
-
 **Run signals body** (`POST /api/v1/lists/:id/run-all-signal`):
 ```json
 {
   "signal_ids": ["uuid1", "uuid2"]
 }
 ```
-Signal IDs optional; uses list's saved configuration if omitted. Jobs queue asynchronously. **Response is plain text `OK` (status 200), not JSON.** Signals that already have terminal results (status 1, 2, or 3) are NOT re-computed — delete and recreate the signal for fresh results.
+Signal IDs optional; uses list's saved configuration if omitted. Jobs queue asynchronously.
 
 **Bulk status request** (check if signals are done):
 ```json
@@ -186,13 +168,127 @@ POST /api/v1/lists-signal/bulk-status
 ```
 Use `people_ids` instead of `account_ids` for person lists (not both).
 
-**Bulk status response shape:** See `async-patterns.md` for the full response. Key: `signal_status_map[account_id][signal_id].status` (note: account first, then signal).
-
 **Status values:**
 - `0` — Not computed yet
-- `1` — Done (success) — result in `.value`
+- `1` — Done (success)
 - `2` — Failed
-- `3` — N/A (missing merge field dependency, check `dependencies_missing` array)
+- `3` — N/A (signal not applicable to this record)
+
+---
+
+## P13N API (AI Personalizations)
+
+P13ns are AI-generated text snippets computed fresh for each person when their sequence task is created. They are step-linked: each p13n belongs to a specific sequence step and its output is embedded in the step's email body or LinkedIn message via a merge field (`{{.key}}`).
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/p13ns` | List p13ns (optional `?step_id=<uuid>`) |
+| GET | `/api/v1/p13n/:id` | Get single p13n |
+| POST | `/api/v1/p13n` | Create p13n |
+| PUT | `/api/v1/p13n/:id` | Update p13n |
+| DELETE | `/api/v1/p13n/:id` | Delete p13n |
+| POST | `/api/v1/p13n/:id/run` | Async: run p13n on a person |
+| GET | `/api/v1/p13n/:id/run-status` | Poll run status (`?person_id=<uuid>`) |
+
+**Create p13n body:**
+```json
+{
+  "label": "Personalized Opening",
+  "step_id": "<step-uuid>",
+  "prompt": "Write a 2-sentence opening for {{.FirstName}} at {{.AccountName}}. Reference: {{.PersonLi_Headline}}.",
+  "word_limit": 60,
+  "default_value": "I came across your profile and was impressed by your work.",
+  "temperature": 0.6
+}
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `label` | Yes | Display name. Also seeds the `key` (e.g. `personalized_opening_a1b2c3`) |
+| `step_id` | Recommended | UUID of the sequence step. When set, p13n is auto-computed at task creation and `is_linkedin_msg` is inferred from the step's action type. |
+| `prompt` | Yes | AI instruction. Use `{{.FieldName}}` merge fields. LinkedIn/company facts are fetched when the prompt references them (e.g. `{{.PersonLi_Headline}}`). |
+| `word_limit` | No | Max output words (default: 80) |
+| `default_value` | No | Fallback text if person lacks required data |
+| `temperature` | No | 0.0–1.0 (default: 0.5) |
+| `is_linkedin_msg` | No | Explicit override for LinkedIn vs. email output format. Inferred from `step_id`'s action when omitted. Set to `true` for `LinkedInMessage`/`LinkedInConnect` steps if not providing `step_id`. |
+
+**Response includes `key`** — the merge field identifier. Use `{{.key}}` in step templates.
+
+**Update p13n writable fields:** `label`, `prompt`, `word_limit`, `default_value`, `temperature`
+
+**Run p13n on person (async):**
+```json
+POST /api/v1/p13n/:id/run
+{
+  "person_id": "<person-uuid>"
+}
+```
+Or find-or-create: `{ "person": {"email": "jane@acme.com"} }`
+
+Returns: `{ "p13n_id": "...", "person_id": "...", "status": "Running" }`
+
+**Poll run status:**
+```
+GET /api/v1/p13n/:id/run-status?person_id=<person-uuid>
+```
+
+Terminal status values: `"Complete"` (with `value` field), `"Not Found"`, `"Missing Dependencies"`, `"Error"`, `"Precondition Not Met"`. Non-terminal: `"Running"`. Poll every 5–10s, timeout at 120s.
+
+---
+
+## Sequence Steps API
+
+Steps are the building blocks of sequences. Modify steps only while the sequence is **inactive** — use `POST /api/v1/sequence/:id/deactivate` first.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/sequence/:id/add-step` | Add a step to a sequence |
+| GET | `/api/v1/step/:id` | Get full step content |
+| PATCH | `/api/v1/step/:id` | Update a step's content |
+| DELETE | `/api/v1/step/:id` | Delete a step |
+
+**Add step** (`POST /api/v1/sequence/:id/add-step?stepToAppendToId=<uuid>`):
+
+`stepToAppendToId` — the step to insert *after*. Use `00000000-0000-0000-0000-000000000000` (nil UUID) to insert as the first step.
+
+```json
+{
+  "action": "SequenceEmail",
+  "step_name": "Initial Outreach",
+  "email_subject": "Quick question about {{.AccountName}}",
+  "email_body": "Hi {{.FirstName}},\n\n{{.my_p13n_key}}\n\nBest,\n{{.UserName}}",
+  "can_run_on_weekends": false
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `action` | `SequenceEmail`, `LinkedInMessage`, or `LinkedInConnect` |
+| `step_name` | Display name |
+| `email_subject` | Subject line (SequenceEmail only) |
+| `email_body` | Email body — supports `{{.FieldName}}` merge fields |
+| `linkedin_message` | Message content (LinkedInMessage only) |
+| `can_run_on_weekends` | Default: false |
+
+Response includes the new step `ID`.
+
+**Get step** (`GET /api/v1/step/:id`):
+
+Returns the full step object including `EmailBody`, `EmailSubject`, `LinkedInMessage`, `Action`, `Name`, timing fields, and all other persisted values. Always GET a step before patching it — `SequenceEmail` steps require both `EmailSubject` and `EmailBody` in the PATCH body, so you need the current values if you're only changing one.
+
+**Update step** (`PATCH /api/v1/step/:id`):
+
+Send `Action` and the content fields to update. For `SequenceEmail`, always send both `EmailSubject` and `EmailBody` together. Accepts both PascalCase (`EmailBody`) and snake_case (`email_body`).
+
+```json
+{
+  "Action": "SequenceEmail",
+  "EmailSubject": "Updated subject",
+  "EmailBody": "Hi {{.FirstName}},\n\n{{.personalized_opening_a1b2c3}}\n\nBest,\n{{.UserName}}"
+}
+```
+
+> When step content is updated, any p13n `{{.key}}` merge fields that no longer appear in the email body, subject, or LinkedIn message are deleted from the p13n table.
 
 ---
 
@@ -200,7 +296,7 @@ Use `people_ids` instead of `account_ids` for person lists (not both).
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/v1/signals` | List signals (returns JSON array, not object) |
+| GET | `/api/v1/signals` | List signals |
 | GET | `/api/v1/signal/:id` | Get single signal |
 | POST | `/api/v1/signal` | Create signal |
 | PUT | `/api/v1/signal/:id` | Update signal |
@@ -390,7 +486,60 @@ If not connected: `{"message": "service account not connected"}`
 
 ---
 
+## HubSpot API
+
+Sync Tiga people to HubSpot without calling the HubSpot API directly. Tiga handles OAuth, contact matching, and field mapping internally.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/hubspot/create-or-update-contact` | Find or create a HubSpot contact for a Tiga person, then update their properties |
+
+**Request body:**
+```json
+{
+  "person_id": "uuid",
+  "hubspot_owner_id": "987654321",
+  "sync_account_association": false,
+  "field_mappings": { "title": "jobtitle" },
+  "find_person_by": {
+    "email": true,
+    "linkedin_url": true
+  }
+}
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `person_id` | Yes | Tiga person UUID |
+| `hubspot_owner_id` | No | HubSpot owner ID — only applied on new contact creation; existing contacts' owner is not changed |
+| `sync_account_association` | No | If `true`, also finds/creates the HubSpot company and associates the contact to it. Person must have an account in Tiga. |
+| `field_mappings` | No | Flat tiga-field → hubspot-field map. When omitted, defaults are used: email, firstname, lastname, hs_linkedin_url, jobtitle, phone, company |
+| `find_person_by.email` | No | Search HubSpot by email before creating (default: `true`) |
+| `find_person_by.linkedin_url` | No | Search HubSpot by LinkedIn URL before creating (default: `true`) |
+
+**Response (200):**
+```json
+{
+  "hubspot_contact_id": "123456789",
+  "contact_created": true
+}
+```
+
+**Error responses:** `400` — Missing/invalid `person_id` or person has no account when `sync_account_association` is true. `401` — Invalid API key. `404` — Person not found.
+
+---
+
 ## Sequences API
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/sequences` | List sequences |
+| POST | `/api/v1/sequence` | Create sequence |
+| GET | `/api/v1/sequence/:id/description` | Get Markdown summary (steps + metadata) |
+| GET | `/api/v1/sequence/:id/metrics` | Get per-step metrics |
+| POST | `/api/v1/sequence/:id/activate` | Activate sequence |
+| POST | `/api/v1/sequence/:id/deactivate` | Deactivate sequence |
+| POST | `/api/v1/sequence/:id/add-people` | Add people to sequence |
 
 ### List Sequences
 
@@ -431,6 +580,91 @@ curl -X GET "https://app.tigalabs.com/api/v1/sequences" \
   -H "X-Tiga-Auth: YOUR_API_KEY" \
   -H "Tiga-Pagination: {\"page\":1,\"page_size\":2,\"sort_by\":\"updated_at\",\"sort_order\":\"desc\"}"
 ```
+
+### Create a Sequence
+
+```
+POST /api/v1/sequence
+```
+
+**Request body:**
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | Yes | Sequence display name |
+| `play_type` | No | `"sequence"` (default), `"flow"`, or `"signal-list-build"` |
+| `business_goal` | No | Free-text description of the goal |
+
+```json
+{
+  "name": "Q3 Outbound — Mid-Market",
+  "play_type": "sequence",
+  "business_goal": "Book meetings with VP Sales at mid-market SaaS companies"
+}
+```
+
+**Response:** `201 Created` — full sequence object. Save the `ID` — required for all subsequent step and people operations.
+
+---
+
+### Get Sequence Description
+
+Returns a human-readable Markdown summary of the sequence and its steps, including each step's UUID. Use this to discover step IDs before adding, updating, or deleting steps.
+
+```
+GET /api/v1/sequence/:id/description
+```
+
+**Response:** `200 OK` — `text/markdown`. Includes sequence name, ID, type, status (Active/Inactive), creation date, and a numbered list of steps with action type, schedule, and UUID.
+
+```
+# Q3 Outbound — Mid-Market
+
+**ID:** `<sequence-uuid>`
+**Type:** sequence
+**Status:** Inactive
+**Created:** 2026-05-01
+
+## Steps (2)
+
+1. **Initial Outreach** (SequenceEmail) — immediately (weekdays only)
+   ID: `<step-uuid-1>`
+
+2. **LinkedIn Follow-up** (LinkedInMessage) — after 3 days (weekdays only)
+   ID: `<step-uuid-2>`
+```
+
+---
+
+### Activate / Deactivate a Sequence
+
+Sequences must be **inactive** to modify steps. Use deactivate before making step changes, then reactivate when done.
+
+```
+POST /api/v1/sequence/:id/activate
+POST /api/v1/sequence/:id/deactivate
+```
+
+Both endpoints are idempotent — calling activate on an already-active sequence (or deactivate on an already-inactive one) returns `200` without error.
+
+**Activate response (`200`):**
+```json
+{"message": "sequence activated", "is_enabled": true}
+```
+
+**Deactivate response (`200`):**
+```json
+{"message": "sequence deactivated", "is_enabled": false}
+```
+
+**Activate error responses:**
+
+| Status | Meaning |
+|--------|---------|
+| `400` | Sequence has no steps, missing required field, or incomplete email content |
+| `428` | Tasks are still updating from a previous change — retry after a few seconds |
+
+---
 
 ### Get Metrics for a Sequence
 

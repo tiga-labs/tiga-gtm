@@ -1,23 +1,19 @@
 ---
-name: signals
-description: "Create, run, and score AI signals on Tiga lists. Use this skill whenever the user wants to research accounts or people with AI — detecting buying signals like recent funding, hiring patterns, tech stack, competitive usage, or company growth. Also trigger when the user asks 'which of my accounts recently raised funding?', 'score these accounts', 'prioritize my pipeline', 'are any of these companies hiring for X?', or any task about filtering, scoring, or researching accounts/contacts using AI-powered data."
+name: bulk-signals
+description: "Run AI signals in bulk across a large Tiga list (250+ accounts or people). Use this skill ONLY when the target list has more than 250 records. For smaller lists or individual records, use run-signal instead. Triggers on phrases like 'score all of my accounts', 'run signals on this entire list', 'prioritize my full pipeline', 'filter all these companies', or any bulk signal operation explicitly on a large dataset."
 ---
 
-# Signals Skill
+# Bulk Signals Skill
 
-Create and run AI-powered signals on Tiga lists to research, filter, and score accounts or people.
+Run AI-powered signals at scale across large Tiga lists (250+ records) to research, filter, and score accounts or people.
 
-**Before starting:** Read `tiga-gtm/docs/api-reference.md` for endpoint details. Read `tiga-gtm/docs/merge-fields.md` for available template variables in signal prompts. Read `tiga-gtm/docs/async-patterns.md` for polling signal computation status and the actual bulk-status response shape.
+**When to use this skill vs run-signal:**
+- **bulk-signals** (this skill): list has **more than 250** accounts or people
+- **run-signal**: list has 250 or fewer records, or you're running a signal on one specific record
+
+**Before starting:** Read `tiga-gtm/docs/api-reference.md` for endpoint details. Read `tiga-gtm/docs/merge-fields.md` for available template variables in signal prompts. Read `tiga-gtm/docs/async-patterns.md` for polling signal computation status.
 
 **Related skills:** Use **prospecting** to build the account list first. After scoring, use **contact-discovery** to find people at top accounts, then **outreach** to enroll them in sequences.
-
-**Critical implementation notes:**
-- **Pagination:** Use `Tiga-Pagination` header (NOT query params) for `GET /api/v1/accounts`. See api-reference.md.
-- **Merge field dependencies:** If prompts use `{{.AccountWebsite}}`, the account's `website` field must be populated (the `domain` field does NOT satisfy this). Set via `PUT /api/v1/account/:id {"website": "https://..."}`. Missing dependencies cause status 3 (N/A) which is terminal and not retried.
-- **Signal reuse:** Check `GET /api/v1/signals` before creating duplicates. Cached results are NOT re-computed by `run-all-signal`. Delete + recreate for fresh results.
-- **Computation speed:** ~1-2 signal-account pairs complete per 10s. Plan for 60-90 min for 250 accounts × 4 signals. Build scripts with generous timeouts (90-120 min).
-- **409 handling:** Account creation returns plain text 409 (no ID). Pre-fetch all accounts into a lookup map instead of relying on 409 responses.
-- **Results-only mode:** For scripts, implement a `--results-only` flag that skips creation/polling and just fetches existing signal values from `GET /api/v1/account/:id` → `custom_columns[signal_id].value`.
 
 ---
 
@@ -75,9 +71,9 @@ curl -X POST "https://app.tigalabs.com/api/v1/lists-signal/bulk-status" \
     "list_id": "<list-id>"
   }'
 ```
-   Response is keyed as `signal_status_map[account_id][signal_id].status`. Wait until all statuses are non-zero (1=done, 2=failed, 3=N/A). Poll every 10 seconds. See `async-patterns.md` for the full response shape.
+   Wait until all statuses are non-zero (1=done, 2=failed, 3=N/A). Poll every 5-10 seconds.
 
-5. **Filter results** — Read signal values for each account via `GET /api/v1/account/:id`. Signal values are in `custom_columns[signal_id].value`. For people: `GET /api/v1/person/:id/signals`. Keep records where signal output starts with "yes" (or matches desired criteria).
+5. **Filter results** — Read signal values for each account via `GET /api/v1/account/:id` or person via `GET /api/v1/person/:id/signals`. Keep records where signal output starts with "yes" (or matches desired criteria).
 
 6. **Create a filtered sub-list** with qualifying records using `POST /api/v1/lists` and `POST /api/v1/lists/:id/add-members`.
 
