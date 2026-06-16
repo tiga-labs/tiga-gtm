@@ -1,5 +1,5 @@
 {
   "name": "tiga-gtm",
-  "description": "GTM workflow skills for the Tiga sales intelligence platform. Build target account lists, find and enrich contacts, run AI signals, manage CRM operations, route leads, orchestrate outreach sequences, and build bulk CRM ops tools.",
-  "version": "1.0.0"
+  "description": "GTM workflows for the Tiga sales intelligence platform across five areas: list building (target accounts and contacts), AI signals, outreach sequences, CRM operations, and agent flows.",
+  "version": "2.1.0"
 }

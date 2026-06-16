@@ -1,15 +1,15 @@
 ---
 name: crm-ops
-description: "CRM hygiene and sync operations using the Tiga API. Use this skill whenever the user wants to detect people who changed jobs, fill missing roles or title gaps in CRM accounts, update stale or outdated contacts, clean field formatting, or sync data between Tiga and HubSpot/Salesforce. Also trigger when the user says 'who left their company?', 'are my contacts still current?', 'standardize job titles', 'find missing contacts at my accounts', or any CRM data quality task. Note: for building a reusable bulk ops *tool* with a web UI, use crm-bulk-ops instead."
+description: "CRM hygiene and sync operations using the Tiga API. Use this skill whenever the user wants to detect people who changed jobs, fill missing roles or title gaps in CRM accounts, update stale or outdated contacts, clean field formatting, sync data between Tiga and HubSpot/Salesforce, push a Tiga contact into HubSpot, read contacts from a HubSpot list, or add Tiga people to a HubSpot list. Trigger phrases: 'who left their company?', 'are my contacts still current?', 'standardize job titles', 'find missing contacts at my accounts', 'push to HubSpot', 'sync contact to HubSpot', 'pull HubSpot list', 'add people to HubSpot list', or any CRM data quality task. NOT for discovering brand-new contacts outside your CRM (use list-building) and NOT for defining or running general-purpose signals (use signals)."
 ---
 
 # CRM Ops Skill
 
-Maintain CRM data quality using Tiga signals, enrichment, and CRM integrations. This skill executes CRM hygiene workflows directly via API calls — for building a standalone tool with a web UI, see the **crm-bulk-ops** skill.
+Maintain CRM data quality and sync with HubSpot/Salesforce using Tiga signals, enrichment, and CRM integrations.
 
 **Before starting:** Read `tiga-gtm/docs/api-reference.md` for endpoint details. Read `tiga-gtm/docs/merge-fields.md` for signal prompt variables. Read `tiga-gtm/docs/async-patterns.md` for polling patterns.
 
-**Related skills:** Workflow B (Fill Role/Title Gaps) uses the same Find People Agent + enrich pattern as **contact-discovery**. For updating CRM records after signal runs, you'll need the OAuth token endpoints documented in `tiga-gtm/docs/api-reference.md`.
+**Related skills:** Workflow B (Fill Role/Title Gaps) uses the same Find People Agent + enrich pattern as **list-building**. Signal creation and run mechanics are covered in depth by the **signals** skill. For updating CRM records after signal runs, you'll need the OAuth token endpoints documented in `tiga-gtm/docs/api-reference.md`.
 
 ---
 
@@ -57,7 +57,7 @@ curl -X POST "https://app.tigalabs.com/api/v1/lists/<list-id>/run-all-signal" \
   -d '{"signal_ids": ["<departure-signal-id>", "<new-role-signal-id>"]}'
 ```
 
-3. **Poll for completion** via `POST /api/v1/lists-signal/bulk-status`.
+3. **Poll for completion** via `POST /api/v1/lists-signal/bulk-status` (polling details: **signals** skill).
 
 4. **Read results** — For each person, check signal values via `GET /api/v1/person/:id/signals`.
 
@@ -130,7 +130,7 @@ POST /api/v1/signal
 }
 ```
 
-2. **Run signal on your contact list** and poll to completion.
+2. **Run signal on your contact list** and poll to completion (run mechanics: **signals** skill).
 
 3. **Filter results:**
    - "Current" → No action needed
@@ -181,3 +181,42 @@ curl -X PUT "https://app.tigalabs.com/api/v1/person/<person-id>" \
 ```
 
 5. **Sync to CRM** via OAuth tokens if needed.
+
+---
+
+## Workflow E: HubSpot Sync
+
+**Use when:** You want to push Tiga people into HubSpot or work with HubSpot lists — using Tiga's native HubSpot endpoints (OAuth, contact matching, and field mapping are handled internally; no direct HubSpot API calls needed).
+
+Full field tables, dedup rules, and response shapes: `references/hubspot.md`.
+
+### Sync a person (create-or-update)
+
+```bash
+curl -X POST "https://app.tigalabs.com/api/v1/hubspot/create-or-update-contact" \
+  -H "X-Tiga-Auth: $TIGA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"person_id": "<tiga-person-uuid>", "find_person_by": {"email": true, "linkedin_url": true}}'
+```
+
+Searches HubSpot by email/LinkedIn before creating; response `contact_created` tells you which happened. **There is no batch endpoint** — loop per person. `hubspot_owner_id` is only applied on new-contact creation; `sync_account_association: true` requires the person to have a Tiga account (else `400`).
+
+### Fetch HubSpot list members as Tiga people
+
+```bash
+curl -X GET "https://app.tigalabs.com/api/v1/hubspot/list-members?list_name=My+List+Name" \
+  -H "X-Tiga-Auth: $TIGA_API_KEY"
+```
+
+`list_name` must match the HubSpot list name **exactly** (case-sensitive). Note: `account_domain` in the response is the HubSpot company *name*, not a domain.
+
+### Add Tiga people to a HubSpot list
+
+```bash
+curl -X POST "https://app.tigalabs.com/api/v1/hubspot/add-to-list" \
+  -H "X-Tiga-Auth: $TIGA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"person_ids": ["<tiga-person-uuid>"], "list_name": "My HubSpot List"}'
+```
+
+Requires `list_id` or `list_name`. **Only MANUAL lists support adds** — DYNAMIC lists fail. Response reports `added`/`failed`; `400` if none could be added.

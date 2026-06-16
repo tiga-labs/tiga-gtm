@@ -26,11 +26,22 @@ Once installed, the Tiga GTM skills will appear in your personal plugins list an
 
 ## Skills Included
 
-- **Prospecting** — Build target account lists matching your ICP
-- **Contact Discovery** — Find and enrich contacts with email and phone
-- **Signals** — Research accounts with AI-powered buying signals
-- **CRM Ops** — Detect job changes, fill gaps, and clean CRM data
-- **Lead Routing** — Filter and route inbound leads
-- **Outreach** — Manage sequences and personalize messaging
+**Router**
+- **Tiga GTM** — Routes any GTM task to the right skill below
+
+**List Building**
+- **List Building** — Build account and people lists: TALs from ICP/Apollo search, lookalikes, role/title contact search, waterfall enrichment, local file enrichment, LinkedIn post reactors
+
+**Signals**
+- **Signals** — Define and run AI buying signals at any scale: create/update signals, score accounts, bulk research
+
+**Sequences**
+- **Sequence Builder** — Author sequence steps and AI personalizations (p13ns)
+- **Outreach** — Enroll people in sequences and monitor performance
+
+**CRM**
+- **CRM Ops** — Detect job changes, fill gaps, clean CRM data, and sync with HubSpot/Salesforce
+
+**Flows**
 - **Flow Builder** — Construct `play_type: flow` agent flows (HubSpot import, enrich, research, ICP filter, signal gate, sequence hand-off)
-- **CRM Bulk Ops** — Build Go web apps for batch CRM operations
+- **Lead Routing** — Filter and route inbound leads

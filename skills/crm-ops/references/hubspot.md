@@ -1,23 +1,12 @@
----
-name: hubspot
-description: "HubSpot sync operations using the Tiga API. Use this skill whenever the user wants to sync a Tiga person or contact to HubSpot, create or update a HubSpot contact record, push Tiga contact data into HubSpot, associate a contact with a HubSpot company, read contacts from a HubSpot list, or add Tiga people to a HubSpot list — all without leaving the Tiga API. Trigger phrases: 'push to HubSpot', 'sync contact to HubSpot', 'create a HubSpot contact', 'update HubSpot from Tiga', 'get contacts from HubSpot list', 'fetch members from HubSpot list', 'pull HubSpot list', 'add to HubSpot list', 'add people to HubSpot list', 'enroll in HubSpot list'. Note: for reading the raw HubSpot OAuth token to call HubSpot's API directly, use the Secrets Access endpoints documented in api-reference.md instead."
----
-
-# HubSpot Skill
+# HubSpot Sync Reference
 
 Sync Tiga people and accounts to HubSpot using Tiga's native HubSpot integration endpoints. These endpoints handle the OAuth token management, contact matching, and field mapping internally — you do not need to call the HubSpot API directly.
 
-**Before starting:** Read `tiga-gtm/docs/api-reference.md` for full endpoint details, including the HubSpot API section.
-
-**Related skills:** For CRM hygiene workflows that detect job changes or stale contacts before syncing, see **crm-ops**. For building a reusable bulk-sync tool with a web UI, see **crm-bulk-ops**.
-
----
+**Before starting:** Read `tiga-gtm/docs/api-reference.md` for full endpoint details, including the HubSpot API section. For reading the raw HubSpot OAuth token to call HubSpot's API directly, use the Secrets Access endpoints documented there instead.
 
 ## Workflow A: Sync a Person to HubSpot
 
 **Use when:** You have one or more Tiga people you want to create or update as HubSpot contacts. Tiga will search for an existing contact by email and/or LinkedIn URL before creating a new one, then push the person's current field values.
-
-### Steps
 
 1. **Identify the person(s) to sync** — you need their Tiga `person_id` (UUID). If you don't have it, look them up first:
 ```bash
@@ -63,13 +52,48 @@ curl -X POST "https://app.tigalabs.com/api/v1/hubspot/create-or-update-contact" 
 
 4. **For bulk syncs** — loop through person IDs and POST for each. There is no batch endpoint; call sequentially or in a small parallel pool.
 
----
+### With account association
+
+To also sync the person's company to HubSpot and link them:
+```bash
+curl -X POST "https://app.tigalabs.com/api/v1/hubspot/create-or-update-contact" \
+  -H "X-Tiga-Auth: $TIGA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "person_id": "<tiga-person-uuid>",
+    "sync_account_association": true,
+    "find_person_by": {
+      "email": true,
+      "linkedin_url": true
+    }
+  }'
+```
+The person must have an account associated in Tiga or the request returns `400`.
+
+### With custom field mappings
+
+To control exactly which Tiga fields map to which HubSpot properties:
+```bash
+curl -X POST "https://app.tigalabs.com/api/v1/hubspot/create-or-update-contact" \
+  -H "X-Tiga-Auth: $TIGA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "person_id": "<tiga-person-uuid>",
+    "field_mappings": {
+      "email_address": "email",
+      "first_name": "firstname",
+      "last_name": "lastname",
+      "title": "jobtitle",
+      "phone": "phone",
+      "linkedin_url": "hs_linkedin_url"
+    }
+  }'
+```
+When `field_mappings` is provided, only the mapped fields are sent to HubSpot. Omit it to use built-in defaults.
 
 ## Workflow B: Fetch HubSpot List Members as Tiga People
 
 **Use when:** You want to read the contacts from a HubSpot list by name and get them back as Tiga-compatible people objects (e.g. to inspect, filter, or feed into a downstream workflow).
-
-### Steps
 
 1. **Fetch the list members:**
 ```bash
@@ -110,52 +134,9 @@ curl -X GET "https://app.tigalabs.com/api/v1/hubspot/list-members?list_name=My+L
    - All other zero-value fields (e.g. `id`, `account_id`) are omitted — these contacts have not been imported into Tiga
    - The list name must match exactly; use `GET /api/hubspot/lists?searchTerm=<name>` (internal API) to look up names if needed
 
-### With account association
-
-To also sync the person's company to HubSpot and link them:
-```bash
-curl -X POST "https://app.tigalabs.com/api/v1/hubspot/create-or-update-contact" \
-  -H "X-Tiga-Auth: $TIGA_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "person_id": "<tiga-person-uuid>",
-    "sync_account_association": true,
-    "find_person_by": {
-      "email": true,
-      "linkedin_url": true
-    }
-  }'
-```
-The person must have an account associated in Tiga or the request returns `400`.
-
-### With custom field mappings
-
-To control exactly which Tiga fields map to which HubSpot properties:
-```bash
-curl -X POST "https://app.tigalabs.com/api/v1/hubspot/create-or-update-contact" \
-  -H "X-Tiga-Auth: $TIGA_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "person_id": "<tiga-person-uuid>",
-    "field_mappings": {
-      "email_address": "email",
-      "first_name": "firstname",
-      "last_name": "lastname",
-      "title": "jobtitle",
-      "phone": "phone",
-      "linkedin_url": "hs_linkedin_url"
-    }
-  }'
-```
-When `field_mappings` is provided, only the mapped fields are sent to HubSpot. Omit it to use built-in defaults.
-
----
-
 ## Workflow C: Add Tiga People to a HubSpot List
 
 **Use when:** You have one or more Tiga people (by `person_id`) and want to add them to a HubSpot list. Tiga will find or create each contact in HubSpot using email/LinkedIn, then enroll them in the list.
-
-### Steps
 
 1. **Add people to the list by HubSpot list ID:**
 ```bash

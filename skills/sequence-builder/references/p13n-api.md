@@ -1,48 +1,14 @@
----
-name: p13n-crud
-description: "Create, update, delete, and preview AI personalizations (p13ns) for sequence steps. Use this skill whenever the user wants to write personalized content for outreach — a custom email opening, a personalized LinkedIn intro, a reference to the prospect's recent activity, or any AI-generated text that should be unique per person. Trigger phrases: 'personalize my outreach', 'write a custom intro', 'add a personalized section', 'AI opening line', 'personalized email', 'personalized LinkedIn message', 'create a p13n', 'add an AI section'. Also trigger when the user says something like 'I want the email to reference their recent funding' or 'write something specific to each person's background' even if they don't use the word 'personalization'."
----
+# P13N API Reference
 
-# P13N CRUD Skill
+Full request/response detail for AI personalizations (p13ns). Auth: `X-Tiga-Auth: $TIGA_API_KEY` on every request.
 
-Create and manage AI personalizations for sequence step email and LinkedIn message templates.
+**Read first:** `tiga-gtm/docs/merge-fields.md` — available `{{.FieldName}}` variables for p13n prompts. Discover all merge fields including custom columns via `GET /api/v1/mergefields`.
 
-**Read before starting:**
-- `tiga-gtm/docs/merge-fields.md` — Available `{{.FieldName}}` variables for p13n prompts
-- `GET /api/v1/mergefields` — Discover all merge fields including custom columns
-
----
-
-## What Is a P13N?
-
-A **p13n** (AI personalization) is an AI-generated text snippet written fresh for each person the moment their outreach task is created in a sequence. It is:
-
-- **Step-linked**: attached to a specific sequence step via `step_id`
-- **Ephemeral**: recomputed for every person at task creation time, not stored as a standing fact
-- **Template-embedded**: referenced in the step's email body or LinkedIn message as `{{.key}}`
-
-**P13Ns vs. Signals:**
-| | P13N | Signal |
-|---|---|---|
-| Output | Outreach text (sentence, paragraph) | Fact or insight stored on person/account |
-| Timing | Computed when task is created | Computed on demand or in batch |
-| Stored where | Person's custom_columns (ephemeral per task) | Person's custom_columns (persistent) |
-| Use case | Email opening, personalized hook, LinkedIn intro | Funding status, hiring signals, tech stack |
-
-Use a **p13n** when the output will appear directly in email or LinkedIn content.
-Use a **signal** when you want to store a fact and potentially use it for filtering, scoring, or routing.
-
----
-
-## Workflow A: Create a P13N
-
-**When to use:** You have a step ready and want to add a personalized AI-generated section to its template.
-
-### Step 1: Write a good p13n prompt
+## Writing a Good P13N Prompt
 
 A p13n prompt should:
 - Give clear instructions for what to write
-- Reference merge fields to personalize the output (see `tiga-gtm/docs/merge-fields.md`)
+- Reference merge fields to personalize the output
 - Be specific about length and tone
 
 **Good prompt examples:**
@@ -72,7 +38,7 @@ curl -X GET "https://app.tigalabs.com/api/v1/mergefields" \
   -H "X-Tiga-Auth: $TIGA_API_KEY"
 ```
 
-### Step 2: Create the P13N
+## Create a P13N
 
 ```bash
 curl -X POST "https://app.tigalabs.com/api/v1/p13n" \
@@ -117,7 +83,7 @@ curl -X POST "https://app.tigalabs.com/api/v1/p13n" \
 }
 ```
 
-**Critical:** The `key` field in the response is the merge field identifier. You will use `{{.personalized_opening_a1b2c3}}` in the step's email body or LinkedIn message. Save both `id` (for update/delete/run) and `key` (for the step template).
+**Critical:** The `key` field in the response is the merge field identifier — `{{.personalized_opening_a1b2c3}}` in the step's email body or LinkedIn message. Save both `id` (for update/delete/run) and `key` (for the step template).
 
 After a successful create, show the user the newly created p13n:
 
@@ -125,30 +91,13 @@ After a successful create, show the user the newly created p13n:
 
 (Use `step_id` from the response. Only show this link if `step_id` is present.)
 
-### Step 3: Insert the merge field into the step template
+**Inserting the key into a step:** follow the canonical step-PATCH in the sequence-builder SKILL.md (Workflow A Step 6) — the sequence must be **inactive**, the PATCH uses snake_case fields, and in HTML fields (`email_body`, `linkedin_message`) the key must be wrapped in the `<span class="tiga-merge">` format, not inserted as plain text. PascalCase aliases are accepted on PATCH, but conflicting duplicate values are rejected with `400`.
 
-After creating the p13n, update the step's email body to include `{{.key}}`:
-
-```bash
-curl -X PATCH "https://app.tigalabs.com/api/v1/step/<step-id>" \
-  -H "X-Tiga-Auth: $TIGA_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "Action": "SequenceEmail",
-    "EmailSubject": "Quick question about {{.AccountName}}",
-    "EmailBody": "Hi {{.FirstName}},\n\n{{.personalized_opening_a1b2c3}}\n\nWould love to show you how we help companies like yours improve pipeline velocity.\n\nBest,\n{{.UserName}}"
-  }'
-```
-
-> **Note:** The sequence must be **inactive** to update step content. Use `POST /api/v1/sequence/:id/deactivate` first if needed. See `tiga-gtm/skills/sequence-step/SKILL.md` for the full step workflow.
-
----
-
-## Workflow B: Preview a P13N on a Real Person
+## Preview a P13N on a Real Person
 
 Run the p13n on a specific person to verify the output before activating the sequence.
 
-### Step 1: Submit the run (async)
+### Submit the run (async)
 
 ```bash
 curl -X POST "https://app.tigalabs.com/api/v1/p13n/<p13n-id>/run" \
@@ -169,7 +118,7 @@ Or by email (finds or creates the person):
 {"p13n_id": "...", "person_id": "...", "status": "Running"}
 ```
 
-### Step 2: Poll until complete
+### Poll until complete
 
 ```bash
 curl -X GET "https://app.tigalabs.com/api/v1/p13n/<p13n-id>/run-status?person_id=<person-uuid>" \
@@ -195,9 +144,7 @@ Poll every 5–10 seconds. Timeout after 120 seconds.
 }
 ```
 
----
-
-## Workflow C: List, Update, or Delete P13Ns
+## List, Update, or Delete P13Ns
 
 **List all p13ns:**
 ```bash

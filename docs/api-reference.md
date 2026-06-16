@@ -2,7 +2,7 @@
 
 ## Authentication & Headers
 
-**Base URL:** `https://app.tigalabs.com`
+**Base URL:** `https://app.tigalabs.com` (production). The base URL is environment-specific — users may run against their own host (e.g. `http://localhost:3000` in dev, or a custom domain). Honor whatever the user gives you; scripts conventionally read it from `TIGA_BASE`.
 
 **Required auth header (all endpoints):**
 ```
@@ -454,6 +454,7 @@ Valid models: `gpt-5.4-2026-03-05`, `gpt-5.2-2025-12-11`, `gpt-5.1-2025-11-13`
 | Method | Path | Description |
 |--------|------|-------------|
 | POST | `/api/v1/apollo-organization-search` | Search Apollo.io organization database |
+| POST | `/api/v1/apollo-people-search` | Search Apollo.io people database |
 
 **Apollo organization search body:**
 ```json
@@ -464,6 +465,17 @@ Valid models: `gpt-5.4-2026-03-05`, `gpt-5.2-2025-12-11`, `gpt-5.1-2025-11-13`
 }
 ```
 Full Apollo request/response schema: https://docs.apollo.io/reference/organization-search
+
+**Apollo people search body:**
+```json
+{
+  "person_titles": ["sales manager"],
+  "q_organization_domains_list": ["apollo.io"],
+  "page": 1,
+  "per_page": 10
+}
+```
+Returns name/title/company/LinkedIn URL — no emails or phones (use Waterfall Enrich for those). Full Apollo request/response schema: https://docs.apollo.io/reference/people-api-search
 
 ---
 
