@@ -7,7 +7,7 @@ description: "Build GTM lists — target accounts and the people at them — usi
 
 Every GTM motion starts with a list. This skill builds them: identify the target **accounts** first, then find the right **people** at them, then enrich and hand off.
 
-**Before starting:** Read `tiga-gtm/docs/api-reference.md` for endpoint details 
+**Before starting:** Read `references/api-reference.md` for endpoint details and `tiga-gtm/docs/async-patterns.md` for polling patterns (Find People Agent, Waterfall Enrich).
 
 **Related skills:** After the list is built, use **signals** to score/prioritize, **sequence-builder** + **outreach** to act on it, **flow-builder** to split it across reps. For contacts already in the CRM (job changes, stale data), use **crm-ops**.
 
@@ -73,18 +73,10 @@ Workflows 1, 3, and 5 usually feed Workflow 2 — that's the accounts-first pipe
 
 2. **Search Apollo:**
 ```bash
-curl -X POST "$TIGA_BASE/api/v1/apollo-organization-search" \
-  -H "X-Tiga-Auth: $TIGA_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "organization_num_employees_ranges": ["50,200"],
-    "organization_locations": ["United States"],
-    "q_organization_keyword_tags": ["saas"],
-    "page": 1,
-    "per_page": 25
-  }'
+curl -X POST "$TIGA_BASE/api/v1/apollo-organization-search?organization_num_employees_ranges[]=50,200&organization_locations[]=United%20States&q_organization_keyword_tags[]=saas&page=1&per_page=25" \
+  -H "X-Tiga-Auth: $TIGA_API_KEY"
 ```
-   (`TIGA_BASE` defaults to `https://app.tigalabs.com`; the key always comes from the environment — never hardcode it.) Full filter options: `references/apollo-search.md`.
+   (`TIGA_BASE` defaults to `https://app.tigalabs.com`; the key always comes from the environment — never hardcode it.) Organization search params go in the query string, not the body. Full filter options: `references/apollo-search.md`.
 
 3. **Paginate** (`page: 2`, `3`, ...) until you have enough accounts or results thin out. Start broad, then tighten filters based on result quality.
 

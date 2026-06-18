@@ -7,6 +7,8 @@ description: "Create, run, and score AI signals with the Tiga API — at any sca
 
 Define AI signals and run them on people or accounts — one record or thousands.
 
+**Before starting:** Read `references/api-reference.md` for endpoint details.
+
 **Auth:** `X-Tiga-Auth: $TIGA_API_KEY` on every request (base URL and shared docs: see the **tiga-gtm** router skill).
 
 ## Decision matrix

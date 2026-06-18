@@ -13,19 +13,11 @@ The proxy passes the JSON body through to Apollo, so Apollo's full filter vocabu
 
 ## Organization search — POST /api/v1/apollo-organization-search
 
-Find companies matching an ICP.
+Find companies matching an ICP. Parameters are passed as query strings, not a request body.
 
 ```bash
-curl -X POST "$TIGA_BASE/api/v1/apollo-organization-search" \
-  -H "X-Tiga-Auth: $TIGA_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "organization_num_employees_ranges": ["50,200"],
-    "organization_locations": ["United States"],
-    "q_organization_keyword_tags": ["saas"],
-    "page": 1,
-    "per_page": 25
-  }'
+curl -X POST "$TIGA_BASE/api/v1/apollo-organization-search?organization_num_employees_ranges[]=50,200&organization_locations[]=United%20States&q_organization_keyword_tags[]=saas&page=1&per_page=25" \
+  -H "X-Tiga-Auth: $TIGA_API_KEY"
 ```
 
 ### Common filters

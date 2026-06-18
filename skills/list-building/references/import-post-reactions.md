@@ -4,7 +4,7 @@ Turn the reactors on a LinkedIn post into enriched Tiga contacts. Tiga fetches e
 
 The canonical reference implementation is `scripts/import_post_reactors.sh` (in the list-building skill directory). It runs the whole flow (submit → poll → CSV export) and handles URNs and appending to an existing list. Copy and adapt it rather than rebuilding from scratch.
 
-**Before starting:** Skim `tiga-gtm/docs/api-reference.md` for the broader People API surface. Note that the `import-from-post-reactions` endpoint is **not** in that doc — the full spec is captured below; trust this doc for it.
+**Before starting:** Skim `references/api-reference.md` for the broader People API surface. Note that the `import-from-post-reactions` endpoint is **not** in that doc — the full spec is captured below; trust this doc for it.
 
 ## When this applies
 

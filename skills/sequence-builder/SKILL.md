@@ -8,7 +8,7 @@ description: "Author and modify outbound sequence content with the Tiga API — 
 Author sequence steps and their AI personalizations (p13ns) — the content side of outbound sequences.
 
 **Read before starting:**
-- `tiga-gtm/docs/api-reference.md` (Sequences API section)
+- `references/api-reference.md` (Sequences API and Sequence Steps API)
 - `tiga-gtm/docs/merge-fields.md` — **important**: `email_body` and `linkedin_message` are HTML fields; merge fields in them must use the `<span class="tiga-merge">` format, not plain `{{.FieldName}}` syntax
 - `tiga-gtm/skills/sequence-builder/references/p13n-api.md` for full p13n API detail and prompt-writing guidance
 

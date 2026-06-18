@@ -28,7 +28,7 @@ OUTPUT_FILE = "people_enriched.csv"
 
 def get_linkedin_profile(linkedin_url: str):
     response = requests.post(
-        f"{BASE_URL}/api/v1/person/li-fact",
+        f"{BASE_URL}/api/v1/person/find-or-create-li",
         headers={"X-Tiga-Auth": API_KEY, "Content-Type": "application/json"},
         json={"linkedin_url": linkedin_url},
     )
@@ -66,4 +66,4 @@ print(f"Done — results saved to {OUTPUT_FILE}")
 - Original columns are always preserved — LinkedIn fields are appended
 - For large files (500+ rows), warn the user about API costs before running
 - `TIGA_API_KEY` must come from the environment — never hardcode it
-- `POST /api/v1/person/li-fact` (lookup by LinkedIn URL) is documented only here — the per-person `GET /api/v1/person/:id/li-fact` in `docs/api-reference.md` is a different route
+- `POST /api/v1/person/find-or-create-li` (lookup by LinkedIn URL) is documented only here — the per-person `GET /api/v1/person/:id/li-fact` in `docs/api-reference.md` is a different route

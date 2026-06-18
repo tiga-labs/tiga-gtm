@@ -31,6 +31,7 @@ Tiga-Filter: {"search_term": "acme", "list_id": "uuid", "sequence_id": "uuid", "
 | GET | `/api/v1/accounts` | List accounts (supports Tiga-Pagination, Tiga-Filter) |
 | POST | `/api/v1/account` | Create account |
 | GET | `/api/v1/account/:id` | Get single account |
+| GET | `/api/v1/account/:id/li-fact` | Get scraped LinkedIn company data |
 | PUT | `/api/v1/account/:id` | Update account |
 | DELETE | `/api/v1/accounts` | Bulk delete (requires People Admin) |
 
@@ -50,6 +51,47 @@ Tiga-Filter: {"search_term": "acme", "list_id": "uuid", "sequence_id": "uuid", "
   "account_ids": ["uuid1", "uuid2"],
   "select_all": false,
   "excluded_account_ids": []
+}
+```
+
+**LinkedIn company data** (`GET /api/v1/account/:id/li-fact`):
+- Path param `:id` is the account UUID. Returns the scraped LinkedIn company fact Tiga has on file for the account.
+- Returns `204 No Content` if no fact is on file; `404` if the account is not found.
+- Response includes: name, description, website, domain, company size, latest funding, LinkedIn IDs/URL, recent posts, open jobs, keywords, industry, location, employee count.
+```json
+{
+  "name": "10Pearls",
+  "description": "View all 2,240 employees",
+  "website": "https://10pearls.com",
+  "domain": "10pearls.com",
+  "tagline": "",
+  "company_size": { "size": "1,001-5,000 employees" },
+  "latest_funding": null,
+  "latest_funding_date": "0001-01-01T00:00:00Z",
+  "linked_in_id": "10pearls",
+  "linked_in_urn_id": "327623",
+  "linked_in_url": "https://ca.linkedin.com/company/10pearls",
+  "posts": [
+    {
+      "date": "2025-12-10",
+      "name": "10Pearls",
+      "post_id": "urn:li:activity:7404513024566575104",
+      "post_link": "https://www.linkedin.com/feed/update/urn:li:activity:7404513024566575104",
+      "post_text": "Turns out, nothing brings a team together like cracking clues under pressure…",
+      "total_links": "32"
+    }
+  ],
+  "recent_posts": [],
+  "jobs": [
+    { "listdate": "2025-12-05", "location": "Tysons Corner, VA", "subtitle": "10Pearls", "title": "HR Generalist" }
+  ],
+  "recent_funding": false,
+  "keywords": ["Mobile Applications", "Cyber Security", "DevOps", "Artificial Intelligence"],
+  "ticker_symbol": "",
+  "industry": "IT Services and IT Consulting",
+  "location": "Vienna, Virginia",
+  "is_website_valid": true,
+  "employee_count": 0
 }
 ```
 
@@ -89,6 +131,45 @@ Tiga-Filter: {"list_id": "list-uuid"}
 - Query param: `shouldFetchIfNotFound=true` triggers a live fetch from LinkedIn (consumes credits)
 - Returns `204 No Content` if unavailable
 - Response includes: name, headline, about, experience, education, skills, interests, recommendations, posts, location, LinkedIn ID, promotion dates, role change indicators
+- `experience` is a flattened text summary; `experience_data` is the structured equivalent. `raw_profile` holds the full provider payload. Long arrays are abbreviated below.
+```json
+{
+  "first_name": "Aaron",
+  "last_name": "Levine",
+  "about": "Seasoned, results-oriented, collaborative financial executive…",
+  "headline": "Chief Financial Officer at Prophix",
+  "posts": [
+    {
+      "date": "2026-06-01",
+      "post_id": "urn:li:activity:7467219151045103617",
+      "post_link": "https://www.linkedin.com/feed/update/urn:li:activity:7467219151045103617",
+      "post_text": "Most finance leaders think they have a speed problem. They don't…"
+    }
+  ],
+  "recent_posts": null,
+  "education": "The Johns Hopkins University - Carey Business School, MBA (Finance)\nUniversity of Delaware, BS (Accounting)",
+  "experience_data": [
+    {
+      "HasNoEndDate": false,
+      "company": { "name": "Prophix", "linkedin_url": "https://www.linkedin.com/company/prophix-software/" },
+      "roles": [
+        { "title": "Chief Financial Officer", "is_current_role": true, "employment_type": "Full-time", "start_date": "2024-01-01T00:00:00Z", "end_date": "0001-01-01T00:00:00Z" }
+      ]
+    }
+  ],
+  "country": "United States",
+  "geo": "Washington DC-Baltimore Area",
+  "skills": "Business Strategy, Private Equity, Mergers & Acquisitions, Financial Modeling…",
+  "linked_in_id": "aaronmlevine",
+  "latest_new_job_date": "2024-01-01T00:00:00Z",
+  "recent_role_change": false,
+  "raw_profile": { "…": "full provider payload (positions, educations, skills, geo, urn)" },
+  "current_title": "Chief Financial Officer",
+  "licenseAndCertificates": [
+    { "authority": "State of Maryland", "name": "Certified Public Accountant", "start_month": 0, "start_year": 0 }
+  ]
+}
+```
 
 **Signals response** (`GET /api/v1/person/:id/signals`):
 ```json
@@ -455,14 +536,12 @@ Valid models: `gpt-5.4-2026-03-05`, `gpt-5.2-2025-12-11`, `gpt-5.1-2025-11-13`
 |--------|------|-------------|
 | POST | `/api/v1/apollo-organization-search` | Search Apollo.io organization database |
 | POST | `/api/v1/apollo-people-search` | Search Apollo.io people database |
+| POST | `/api/v1/li-person-fact` | LinkedIn person data by public profile URL (read-only lookup) |
+| POST | `/api/v1/li-company-fact` | LinkedIn company data by public company URL (read-only lookup) |
 
-**Apollo organization search body:**
-```json
-{
-  "q_organization_name": "Acme Corp",
-  "page": 1,
-  "per_page": 10
-}
+**Apollo organization search** — parameters passed as query strings (no request body):
+```
+POST /api/v1/apollo-organization-search?q_organization_name=Acme%20Corp&page=1&per_page=10
 ```
 Full Apollo request/response schema: https://docs.apollo.io/reference/organization-search
 
@@ -476,6 +555,30 @@ Full Apollo request/response schema: https://docs.apollo.io/reference/organizati
 }
 ```
 Returns name/title/company/LinkedIn URL — no emails or phones (use Waterfall Enrich for those). Full Apollo request/response schema: https://docs.apollo.io/reference/people-api-search
+
+**LinkedIn person fact** (`POST /api/v1/li-person-fact`):
+- Read-only lookup by public profile URL — does **not** create a person in your workspace. If not yet collected, it's fetched from LinkedIn on demand and cached.
+- Query param `shouldIncludePosts=true` fetches the person's recent posts; when omitted (default), `posts` and `recent_posts` are `null`.
+- Body: `{"linkedin_url": "https://www.linkedin.com/in/aaronmlevine"}` (required).
+- `400` if the body can't be parsed, `linkedin_url` is missing, or the URL can't be resolved to a profile id; `204` if no fact can be found or fetched.
+```bash
+curl -X POST "https://app.tigalabs.com/api/v1/li-person-fact" \
+  -H "X-Tiga-Auth: $TIGA_API_KEY" -H "Content-Type: application/json" \
+  -d '{"linkedin_url": "https://www.linkedin.com/in/aaronmlevine"}'
+```
+Response is the same `LiPersonFact` shape shown under People API → *LinkedIn profile data* (with `posts`/`recent_posts` populated only when `shouldIncludePosts=true`).
+
+**LinkedIn company fact** (`POST /api/v1/li-company-fact`):
+- Read-only lookup by public company-page URL — does **not** create an account in your workspace. If not yet collected, it's researched on LinkedIn on demand and cached.
+- Query param `shouldIncludePosts=true` includes the company's recent posts; when omitted (default), `posts` and `recent_posts` are `null`.
+- Body: `{"linkedin_url": "https://www.linkedin.com/company/10pearls"}` (required).
+- `400` if the body can't be parsed, `linkedin_url` is missing, or the URL can't be resolved to a company id; `204` if no fact can be found or researched.
+```bash
+curl -X POST "https://app.tigalabs.com/api/v1/li-company-fact" \
+  -H "X-Tiga-Auth: $TIGA_API_KEY" -H "Content-Type: application/json" \
+  -d '{"linkedin_url": "https://www.linkedin.com/company/10pearls"}'
+```
+Response is the same `LiCompanyFact` shape shown under Accounts API → *LinkedIn company data*.
 
 ---
 
