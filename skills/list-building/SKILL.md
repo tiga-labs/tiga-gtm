@@ -222,6 +222,15 @@ Common next actions once the CSV looks right — apply the ones the goal calls f
 
 - **Exclude customers.** Remove existing customers before any outreach: check the CRM (**crm-ops** can pull HubSpot lists; Tiga accounts via `GET /api/v1/accounts` with search) and ask the user whether there are other accounts to exclude. Dedupe by domain against the exclusion set.
 
+- **Verify individual emails.** Before enrolling contacts in a sequence you can check whether an email address is deliverable without running the full waterfall enrich flow. One credit per call:
+```bash
+curl -X POST "$TIGA_BASE/api/v1/verify-email" \
+  -H "X-Tiga-Auth: $TIGA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "jane@acme.com"}'
+```
+  Response: `is_valid` (`true`/`false`), `status` (`valid`, `invalid`, `catch-all`, `unknown`, etc.), and `sub_status` (reason when invalid). Skip contacts where `is_valid` is `false` and `status` is `invalid`. Keep `catch-all` contacts — those domains accept all mail so validity can't be determined. Full spec: `docs/api-reference.md` → *Email Verification API*.
+
 - **Waterfall enrich.** Once you know you want the contact data, Tiga's waterfall enrich is the best way to get verified email + phone. Submit every person, collect `enrich_id`s, then poll in parallel:
 ```bash
 curl -X POST "$TIGA_BASE/api/v1/people/enrich-person" \

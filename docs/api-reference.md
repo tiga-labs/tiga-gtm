@@ -451,6 +451,49 @@ Precondition fields:
 
 ---
 
+## Email Verification API
+
+Validates a single email address using ZeroBounce. Deducts one credit from the org's credit balance (unless the org supplies its own ZeroBounce API key in settings).
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/verify-email` | Verify an email address |
+
+**Request body:**
+```json
+{
+  "email": "jane@acme.com"
+}
+```
+
+**Response (200):**
+```json
+{
+  "email": "jane@acme.com",
+  "status": "valid",
+  "sub_status": "",
+  "is_valid": true,
+  "free_email": false,
+  "did_you_mean": null,
+  "domain": "acme.com",
+  "mx_found": "true",
+  "mx_record": "aspmx.l.google.com"
+}
+```
+
+**`status` values:** `valid`, `invalid`, `catch-all`, `unknown`, `spamtrap`, `abuse`, `do_not_mail`
+
+**`sub_status` values (when `status` is `invalid`):** `mailbox_not_found`, `failed_syntax_check`, `possible_typo`, `no_dns_entries`, `mailbox_quota_exceeded`, `role_based`, `disposable`, `toxic`, and others — see [ZeroBounce docs](https://www.zerobounce.net/docs/email-validation-api-quickstart/).
+
+**`is_valid`** — `true` only when `status` is `valid`.
+
+**Error responses:**
+- `400` — Missing or unparseable body, or `email` field is empty
+- `402` — Org has reached its credit limit
+- `500` — ZeroBounce API error
+
+---
+
 ## Waterfall Enrich API (async)
 
 | Method | Path | Description |
