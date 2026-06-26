@@ -238,7 +238,7 @@ curl -X POST "$TIGA_BASE/api/v1/people/enrich-person" \
 ```
    Poll `GET $TIGA_BASE/api/v1/enrich/<enrich-id>` every 5-10s until `data_import_status` is not `"Running"`. Enrichment creates the person in Tiga and links them to their account — capture `person_id` for downstream steps.
 
-- **Commit to Tiga.** Create a list (`POST /api/v1/lists` with `object_type` `account` or `person`), create accounts (`POST /api/v1/account` — handle `409 Conflict` by looking up the existing record) or let enrichment create the people, then `POST /api/v1/lists/:id/add-members`. Signals and sequences operate on Tiga lists, so this is the gateway to everything below.
+- **Commit to Tiga.** Create a list (`POST /api/v1/lists` with `object_type` `account` or `person`), create accounts (`POST /api/v1/account` — handle `409 Conflict` by looking up the existing record) or let enrichment create the people, then `POST /api/v1/lists/:id/add-members` with `object_ids` (not `member_ids`). Verify after add-members: `GET /api/v1/accounts` or `GET /api/v1/people` with `Tiga-Filter: {"list_id":"<id>"}` — `total_count` must be > 0 before handing off to signals or sequences.
 
 - **Segment by territory.** Splitting lists is common — mostly by geo, sometimes by other parameters (size band, vertical, owner). Split the CSV or create per-territory Tiga lists. For routing to reps, use **flow-builder**.
 

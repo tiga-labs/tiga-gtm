@@ -216,7 +216,7 @@ Tiga-Filter: {"list_id": "list-uuid"}
   }
 }
 ```
-Optional fields: `object_ids`, `excluded_object_ids`, `filter`, `from_list_id`, `search_term`, `select_all`.
+Optional fields: `object_ids`, `excluded_object_ids`, `filter`, `from_list_id`, `search_term`, `select_all`. Advanced person-list selection also accepts `sequence_id`, `task_status`, and `step_id` when `select_all` is true.
 
 **Add members body** (`POST /api/v1/lists/:id/add-members`):
 ```json
@@ -229,6 +229,8 @@ Optional fields: `object_ids`, `excluded_object_ids`, `filter`, `from_list_id`, 
   "select_all": false
 }
 ```
+
+> **Request body validation:** This API route rejects unknown fields. To add explicit records, provide `object_ids` as a non-empty array; do not use `member_ids`. To add by `filter`, `from_list_id`, `search_term`, or sequence task status, set `select_all: true`. Sending an empty `object_ids` array without `select_all: true`, omitting both `object_ids` and `select_all`, or using a misnamed field returns `400` with an explanation. After calling this endpoint, verify membership with `GET /api/v1/accounts` or `GET /api/v1/people` using `Tiga-Filter: {"list_id":"<id>"}`; `total_count` should be > 0 before handing off to signals or sequences.
 
 **Run signals body** (`POST /api/v1/lists/:id/run-all-signal`):
 ```json
