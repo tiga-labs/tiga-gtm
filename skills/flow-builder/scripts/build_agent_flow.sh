@@ -203,7 +203,7 @@ print(json.dumps({
   'action': 'SequenceEmail',
   'step_name': 'Sales intro',
   'email_subject': 'Thanks for joining our webinar',
-  'email_body': 'Hi {{.FirstName}},\n\nThanks for attending our recent webinar! I wanted to introduce myself — I work with {{.AccountName}}-sized teams to help them get the most out of our platform.\n\nWould you be open to a quick 15-minute chat this week?\n\nBest,\n{{.SenderFirstName}}'
+  'email_body': 'Hi {{.FirstName}},\n\nThanks for attending our recent webinar! I wanted to introduce myself — I work with {{.AccountName}}-sized teams to help them get the most out of our platform.\n\nWould you be open to a quick 15-minute chat this week?\n\nBest,'
 }))")
   /usr/bin/curl -sS -X POST -H "$AUTH" -H "Content-Type: application/json" -d "$EMAIL_BODY" "$BASE/api/v1/sequence/$FOLLOWUP_ID/add-step?stepToAppendToId=$ROOT_STEP" >/dev/null
 fi

@@ -1,6 +1,6 @@
 ---
 name: flow-builder
-description: "Build Tiga 'flow' play_type sequences end-to-end via the Tiga API using curl. Use this skill whenever the user wants to programmatically create or configure a flow (an agent flow / multi-step automation that imports, enriches, researches, filters, and routes leads), wire up steps like Import From HubSpot, Waterfall Enrich, LinkedIn Research, Account Fit (ICP), Run Signal, or Add To Sequence, or asks to script the construction of an inbound or webinar followup flow. Also trigger on: 'build me a flow', 'create an agent flow', 'set up a webinar inbound sequence', 'add a HubSpot import step', 'configure an ICP filter step', or any request to assemble a Tiga sequence with `play_type: flow` rather than the plain outreach `play_type: sequence`. NOT for plain outreach cadences — use sequence-builder to author step content and outreach to enroll people."
+description: "Build Tiga 'flow' play_type sequences end-to-end via the Tiga API using curl. Use this skill whenever the user wants to programmatically create or configure a flow (an agent flow / multi-step automation that imports, enriches, researches, filters, and routes leads), wire up steps like Import From HubSpot, Waterfall Enrich, LinkedIn Research, Account Fit (ICP), Run Signal, or Add To Sequence, or asks to script the construction of an inbound or webinar followup flow. Also trigger on: 'build me a flow', 'create an agent flow', 'set up a webinar inbound sequence', 'add a HubSpot import step', 'configure an ICP filter step', or any request to assemble a Tiga sequence with `play_type: flow` rather than the plain outreach `play_type: sequence`. NOT for plain outreach cadences — use sequence-builder to author step content and sequence-runner to enroll people."
 ---
 
 # Tiga Flow Builder
@@ -23,7 +23,7 @@ Use this skill when the user wants to script construction of a Tiga flow, especi
 - Running a Tiga signal as a flow gate (`RunSignal`)
 - Routing to another sequence by owner (`AddToSequence`)
 
-If the user just wants to add people to an existing outreach sequence, that's the `outreach` skill; if they want to write email copy or step content, that's `sequence-builder` — not this one.
+If the user just wants to add people to an existing outreach sequence, that's the `sequence-runner` skill; if they want to write email copy or step content, that's `sequence-builder` — not this one.
 
 ## Recommended flow shape for inbound
 

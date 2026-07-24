@@ -8,13 +8,21 @@ The canonical reference implementation is `scripts/import_post_reactors.sh` (in 
 
 ## When this applies
 
-Use it when the user has one or more LinkedIn **post** URLs (or post URNs / numeric activity ids) and wants the people who reacted as contacts. Post URLs look like:
+Use it when the user has one or more LinkedIn post URLs and wants the people who reacted as contacts.
 
-```
-https://www.linkedin.com/posts/<author>_<slug>-activity-7466133283324579840-HWnp
-```
+LinkedIn posts come in two URL formats with different capabilities:
 
-`ugcPost` and `share` URLs work too, as does a bare URN (`urn:li:activity:7466133283324579840`) or numeric id (`7466133283324579840`).
+**Feed/update URLs** — contain the actual activity URN in the path:
+```
+https://www.linkedin.com/feed/update/urn:li:activity:7476301250368630784
+```
+With these, send the full URL as `post_url` **and** extract the numeric id (e.g. `7476301250368630784`) to also send as `post_urn`. Providing `post_urn` lets the server skip a lookup step and process the import faster.
+
+**Share/posts URLs** — the trailing number is a share id, not the post URN:
+```
+https://www.linkedin.com/posts/<author>_<slug>-<share-id>/
+```
+With these, send the full URL as `post_url` only. Do not attempt to extract a `post_urn` from these URLs — the trailing number is not a valid activity URN.
 
 If the user wants people by **role/title** at target accounts, or from a Sales Navigator search, that's list-building Workflow 2 (Named Accounts → People), not this import.
 
@@ -28,7 +36,7 @@ There is **no job-status endpoint** (a `/status` route 404s). The way to track p
 
 1. **Confirm intent.** Get the post URL(s) and a sensible list name (default to something like `Post Reactors - <author> - <date>`). If the user has several posts and wants them in one list, plan to create the list on the first import and append the rest via `list_id`.
 
-2. **Submit the import.** `POST /api/v1/people/import-from-post-reactions` with `{name, post_url}`. Capture `list_id` and `job_id` from the response.
+2. **Submit the import.** `POST /api/v1/people/import-from-post-reactions` with `{name, post_url}`. If the URL is a feed/update URL, also extract the numeric activity id and include it as `post_urn` — this speeds up the server's processing. Capture `list_id` and `job_id` from the response.
 
 3. **Poll the list until it stabilizes.** `GET /api/v1/people` with a `Tiga-Filter` header of `{"list_id":"<id>"}`, reading `total_count`. Poll every ~15s; consider it done when the count is non-zero and unchanged across two reads, with a timeout (~10 min). Don't poll a `/status` URL — it doesn't exist.
 
@@ -36,7 +44,7 @@ There is **no job-status endpoint** (a `/status` route 404s). The way to track p
 
 5. **Tell the user enrichment is still settling.** More emails resolve in the background after the count stops growing; offer to re-export the same `list_id` in a few minutes.
 
-The list created here is a normal Tiga people list, so downstream skills compose directly: `outreach` to enroll the reactors in a sequence, `signals` to research/score them, `crm-ops` to sync.
+The list created here is a normal Tiga people list, so downstream skills compose directly: `sequence-runner` to enroll the reactors in a sequence, `signals` to research/score them, `crm-ops` to sync.
 
 ## Endpoint spec — POST /api/v1/people/import-from-post-reactions
 
@@ -47,13 +55,11 @@ Request body:
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `name` | string | yes | Name of the list to import reactors into. A new list is created unless `list_id` is given. |
-| `post_url` | string | yes* | Full LinkedIn post URL. `ugcPost` and `share` URLs are accepted. |
-| `post_urn` | string | yes* | The post's URN or numeric id (`7468009810714669056` or `urn:li:activity:7468009810714669056`). Alternative to `post_url`. |
+| `post_url` | string | **yes** | Full LinkedIn post URL. Both feed/update URLs (`/feed/update/urn:li:activity:…`) and share/posts URLs (`/posts/<author>_<slug>-<id>/`) are accepted. Always required. |
+| `post_urn` | string | no | The post's activity URN or bare numeric id (`urn:li:activity:7468009810714669056` or `7468009810714669056`). Optional but speeds up processing — providing it lets the server skip a lookup step. **Only available from feed/update URLs** (`/feed/update/urn:li:activity:<id>`) — extract the numeric id from the path. Do **not** use the trailing number from share/posts URLs; that is a share id, not an activity URN. |
 | `list_id` | uuid | no | Existing list to append reactors to. When omitted, a new list is created from `name`. |
 | `import_history_id` | uuid | no | Existing import-history record to associate with. A new one is created when omitted. |
 | `max_list` | integer | no | Max reactors to import. Defaults to `1500`. |
-
-\* Provide at least one of `post_url` or `post_urn`. Either field also accepts the other format.
 
 Response (`201`):
 

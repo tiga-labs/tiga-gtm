@@ -70,6 +70,41 @@ Tiga-Filter: {"search_term": "acme", "list_id": "uuid", "sequence_id": "uuid", "
 Tiga-Filter: {"list_id": "list-uuid"}
 ```
 
+**Search by name** (existence check — via Tiga-Filter header):
+```json
+Tiga-Filter: {"search_term": "Mike Ball"}
+```
+```bash
+curl -s "$TIGA_BASE/api/v1/people" \
+  -H "X-Tiga-Auth: $TIGA_API_KEY" \
+  -H 'Tiga-Filter: {"search_term": "Mike Ball"}'
+```
+`search_term` is free-text search. Response is `{"rows": [...], "total_count": N}` — `total_count: 0` means the person is not in Tiga. Combinable with `list_id` to search within a list. The same header works on `GET /api/v1/accounts` for company lookups.
+
+---
+
+## Import API (bulk)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/import/preflight` | Validate rows; report importable/existing state (no writes) |
+| POST | `/api/v1/import/upload` | Bulk-create/update accounts + people from flat rows, optionally add to a list |
+
+The go-to way to commit a built CSV. Each row is split into an account and/or a person; existing records are **upserted** (deduped by domain/company-linkedin for accounts, email/linkedin for people — no `409` handling). Per row a person needs `email` or `linkedin_url`; an account needs `website`/`domain` or `company_linkedin`. Max 5000 rows per call.
+
+**Upload body:**
+```json
+{
+  "records": [
+    { "email": "jane@acme.com", "first_name": "Jane", "title": "VP Sales",
+      "website": "acme.com", "account_name": "Acme",
+      "custom_columns": { "persona": "Champion", "lead_score": 87 } }
+  ],
+  "list_name": "Q3 ICP targets"
+}
+```
+Optional top-level fields: `list_id`, `list_name`, `import_history_id`, `source_name`. Returns `201` with `import_history_id`, `list_id`, a `summary` (`accounts_created/updated`, `people_created/updated`, `skipped`, `errors`), and per-row `records` (`status` `ok`/`error`, with `person_status`/`account_status` of `created`/`updated`). Invalid rows are skipped and reported; the valid rows still import. Every imported object is associated with the returned `import_history_id`. Full spec: `references/import-upload.md`.
+
 ---
 
 ## Data Endpoints
@@ -136,6 +171,7 @@ Read-only LinkedIn lookups by public URL — useful for enriching list rows. Nei
 | GET | `/api/v1/lists` | List all lists (filter: `?object_type=person\|account`) |
 | POST | `/api/v1/lists` | Create list |
 | POST | `/api/v1/lists/:id/add-members` | Add members to list |
+| DELETE | `/api/v1/lists/:id/remove-members` | Remove members from list |
 
 **Create list body:**
 ```json
@@ -161,6 +197,19 @@ Optional fields: `object_ids`, `excluded_object_ids`, `filter`, `from_list_id`, 
 ```
 
 > **Request body validation:** This API route rejects unknown fields. To add explicit records, provide `object_ids` as a non-empty array; do not use `member_ids`. To add by `filter`, `from_list_id`, `search_term`, or sequence task status, set `select_all: true`. Sending an empty `object_ids` array without `select_all: true`, omitting both `object_ids` and `select_all`, or using a misnamed field returns `400` with an explanation. After calling this endpoint, verify membership with `GET /api/v1/accounts` or `GET /api/v1/people` using `Tiga-Filter: {"list_id":"<id>"}`; `total_count` should be > 0 before handing off to signals or sequences.
+
+**Remove members body** (`DELETE /api/v1/lists/:id/remove-members`):
+```json
+{
+  "object_ids": ["uuid1", "uuid2"],
+  "excluded_object_ids": ["uuid3"],
+  "filter": {},
+  "from_list_id": "uuid",
+  "search_term": "string",
+  "select_all": false
+}
+```
+Uses the same bulk-action selection as add-members: pass explicit `object_ids`, or a `filter` with `select_all: true`. Object type is resolved from `filter.object_type` (`person` or `account`). IDs not currently in the list are ignored. Returns `200` with an empty body on success.
 
 ---
 

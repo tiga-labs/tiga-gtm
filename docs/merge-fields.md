@@ -44,8 +44,10 @@ Key attributes:
 <p>Hi <span class="tiga-merge" data-custom-column-id="null" data-computed-config-type="null" data-value="{{.FirstName}}" data-entity="Person" data-alt-text="">First Name</span>,</p>
 <p><span class="tiga-merge" data-custom-column-id="a1b2c3d4-..." data-computed-config-type="gpt" data-value="{{.personalized_opening_a1b2c3}}" data-entity="AiSection" data-alt-text="">Personalized Opening</span></p>
 <p>Would love to connect and share how we help teams like <span class="tiga-merge" data-custom-column-id="null" data-computed-config-type="null" data-value="{{.AccountName}}" data-entity="Account" data-alt-text="">Account Name</span>.</p>
-<p>Best,<br><span class="tiga-merge" data-custom-column-id="null" data-computed-config-type="null" data-value="{{.UserName}}" data-entity="User" data-alt-text="">User's Name</span></p>
+<p>Best,</p>
 ```
+
+> **No signature or sender name.** The sending user's email signature is appended automatically at send time. End email bodies with a short closing like `<p>Best,</p>` and nothing after it — never add `{{.UserName}}` or a written-out signature.
 
 ### P13n merge fields
 
@@ -124,6 +126,8 @@ Use `{{.FieldName}}` directly in string fields that are AI prompt templates. **D
 |-------|-------------|
 | `{{.UserName}}` | User's Name |
 | `{{.UserRole}}` | User's Role |
+
+> Use these for mid-body references only (e.g. "on behalf of {{.UserName}}") — never to sign off an email. The user's email signature is appended automatically at send time, so end email bodies with a short closing like `Best,` and nothing after it.
 
 ### Other Fields
 

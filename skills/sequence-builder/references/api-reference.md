@@ -28,6 +28,8 @@ Tiga-Filter: {"search_term": "acme", "list_id": "uuid", "sequence_id": "uuid", "
 
 Steps are the building blocks of sequences. Modify steps only while the sequence is **inactive** — use `POST /api/v1/sequence/:id/deactivate` first.
 
+The sending user's email signature is appended automatically to every outgoing email — do not end `email_body` with a signature or `{{.UserName}}`; close with `Best,` and nothing after it.
+
 | Method | Path | Description |
 |--------|------|-------------|
 | POST | `/api/v1/sequence/:id/add-step` | Add a step to a sequence |
@@ -44,7 +46,7 @@ Steps are the building blocks of sequences. Modify steps only while the sequence
   "action": "SequenceEmail",
   "step_name": "Initial Outreach",
   "email_subject": "Quick question about {{.AccountName}}",
-  "email_body": "Hi {{.FirstName}},\n\n{{.my_p13n_key}}\n\nBest,\n{{.UserName}}",
+  "email_body": "Hi {{.FirstName}},\n\n{{.my_p13n_key}}\n\nBest,",
   "can_run_on_weekends": false
 }
 ```
@@ -72,7 +74,7 @@ Send `Action` and the content fields to update. For `SequenceEmail`, always send
 {
   "Action": "SequenceEmail",
   "EmailSubject": "Updated subject",
-  "EmailBody": "Hi {{.FirstName}},\n\n{{.personalized_opening_a1b2c3}}\n\nBest,\n{{.UserName}}"
+  "EmailBody": "Hi {{.FirstName}},\n\n{{.personalized_opening_a1b2c3}}\n\nBest,"
 }
 ```
 

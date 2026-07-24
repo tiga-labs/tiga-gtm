@@ -9,7 +9,7 @@ Every GTM motion starts with a list. This skill builds them: identify the target
 
 **Before starting:** Read `references/api-reference.md` for endpoint details and `tiga-gtm/docs/async-patterns.md` for polling patterns (Find People Agent, Waterfall Enrich).
 
-**Related skills:** After the list is built, use **signals** to score/prioritize, **sequence-builder** + **outreach** to act on it, **flow-builder** to split it across reps. For contacts already in the CRM (job changes, stale data), use **crm-ops**.
+**Related skills:** After the list is built, use **signals** to score/prioritize, **sequence-builder** + **sequence-runner** to act on it, **flow-builder** to split it across reps. For contacts already in the CRM (job changes, stale data), use **crm-ops**.
 
 ---
 
@@ -17,13 +17,15 @@ Every GTM motion starts with a list. This skill builds them: identify the target
 
 1. **Accounts first, then people.** Settle which companies you're targeting before searching for anyone at them. Even when the user leads with a title ("find me VPs of Eng"), pin down the account universe first.
 
-2. **Search Apollo first.** Tiga proxies Apollo's database via `POST /api/v1/apollo-organization-search` and `POST /api/v1/apollo-people-search`. The API is fast and returns results **without** paid enrichment — people results carry name/title/company but no verified email or phone. That's desirable: the goal of the outreach usually dictates slimming or prioritizing the list before you pay to enrich it. Full filter and response detail: `references/apollo-search.md`. Use the Find People Agent (`POST /api/v1/agent/find-people`) only as a fallback for fuzzy, descriptive queries that Apollo filters can't express.
+2. **Determine Account data source.** Does the user want to fetch data from internal LLM knowledge, web search or using data providers?
 
-3. **Work in scripts and CSV files.** Build and iterate locally — it's flexible and doesn't muddy up Tiga or the CRM until the list is ready to commit. Create Tiga accounts/lists/people only in the commit phase (see Follow-ups).
+3. **Use apollo for build.** Tiga proxies Apollo's database via `POST /api/v1/apollo-organization-search`, `POST /api/v1/apollo-people-search`, and `POST /api/v1/apollo-bulk-match`. People search is fast and free (no credits) but returns **partial, obfuscated matches** — an Apollo person `id`, first name + obfuscated last name, title, and `has_email`/`has_*` presence flags; no email, phone, or LinkedIn URL. That's desirable: the goal of the outreach usually dictates slimming or prioritizing the list before you pay to reveal it — via `apollo-bulk-match` (id → email, 50 credits per matched record) or waterfall enrich. Full filter and response detail: `references/apollo-search.md`. Use the Find People Agent (`POST /api/v1/agent/find-people`) only as a fallback for fuzzy, descriptive queries that Apollo filters can't express.
 
-4. **Always report found AND not-found.** When building from named accounts, keep a record of every account where no contacts matched. The final report has two halves: "here's what we found" and "here's what we couldn't find." This builds trust.
+4. **Work in scripts and CSV files.** Build and iterate locally — it's flexible and doesn't muddy up Tiga or the CRM until the list is ready to commit. Create Tiga accounts/lists/people only in the commit phase (see Follow-ups).
 
-5. **Ask the user if they would like to enrich the list last.** Waterfall enrich last
+5. **Always report found AND not-found.** When building from named accounts, keep a record of every account where no contacts matched. The final report has two halves: "here's what we found" and "here's what we couldn't find." This builds trust.
+
+6. **Ask the user if they would like to enrich the list last.** Waterfall enrich last
 
 ---
 
@@ -109,26 +111,20 @@ curl -X POST "$TIGA_BASE/api/v1/apollo-organization-search?organization_num_empl
 
 1. **Collect the account domains** — from the user's named-account list, a Workflow 1/3/5 CSV, or an existing Tiga list.
 
-2. **Search Apollo for people** — batch domains into one call (`q_organization_domains_list` accepts up to 1,000):
+2. **Search Apollo for people** — parameters go in the query string (the endpoint does not accept a JSON body); batch domains into one call (`q_organization_domains_list` accepts up to 1,000):
 ```bash
-curl -X POST "$TIGA_BASE/api/v1/apollo-people-search" \
-  -H "X-Tiga-Auth: $TIGA_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "person_titles": ["VP of Engineering", "Director of Engineering"],
-    "person_seniorities": ["vp", "director"],
-    "q_organization_domains_list": ["acme.com", "globex.com", "initech.com"],
-    "page": 1,
-    "per_page": 100
-  }'
+curl -X POST "$TIGA_BASE/api/v1/apollo-people-search?person_titles[]=VP%20of%20Engineering&person_titles[]=Director%20of%20Engineering&person_seniorities[]=vp&person_seniorities[]=director&q_organization_domains_list[]=acme.com&q_organization_domains_list[]=globex.com&q_organization_domains_list[]=initech.com&page=1&per_page=100" \
+  -H "X-Tiga-Auth: $TIGA_API_KEY"
 ```
-   Results include name, title, company, and LinkedIn URL — **not** verified email/phone. That comes later via waterfall enrich, after the list is slimmed.
+   Results are **partial and obfuscated**: an Apollo person `id`, first name + obfuscated last name, title, company name, and `has_email`/`has_*` presence flags — **no** email, phone, or LinkedIn URL. The `id` is the key output; hold onto it for the reveal step. Free — consumes no credits.
 
 3. **Apply the per-company cap** from intake. At large accounts many people share a role — keep the agreed number per account, preferring seniority, department, and region fit.
 
-4. **Track the misses.** Record every input domain that returned zero matching people. The final report always shows both tables: accounts with contacts found, and accounts where nothing matched (with the count).
+4. **Reveal the keepers.** Once the list is slimmed, unlock contact data for the people you're keeping — with the user's OK, since this is where credits are spent. `POST /api/v1/apollo-bulk-match` takes the Apollo `id`s (up to 10 per call, **50 credits per matched record**) and returns full name, verified email, title, and LinkedIn URL — but no phone. When phone numbers are needed, use waterfall enrich instead (see Follow-ups). Full spec: `references/apollo-search.md`.
 
-5. **Fallback — Find People Agent** for fuzzy or Sales-Navigator-style descriptive queries Apollo filters can't express:
+5. **Track the misses.** Record every input domain that returned zero matching people. The final report always shows both tables: accounts with contacts found, and accounts where nothing matched (with the count).
+
+6. **Fallback — Find People Agent** for fuzzy or Sales-Navigator-style descriptive queries Apollo filters can't express:
 ```bash
 curl -X POST "$TIGA_BASE/api/v1/agent/find-people" \
   -H "X-Tiga-Auth: $TIGA_API_KEY" \
@@ -140,7 +136,7 @@ curl -X POST "$TIGA_BASE/api/v1/agent/find-people" \
 ```
    Async — capture `status_id`, then poll `GET $TIGA_BASE/api/agent/find-people/<status-id>/status` (note: no `/v1/` in the status path) every 5-10s until `status` is `"Complete"` or starts with `"Error"`; timeout at 420s. Valid models: `gpt-5.4-2026-03-05`, `gpt-5.2-2025-12-11`, `gpt-5.1-2025-11-13`.
 
-6. **Write to CSV** — first_name, last_name, title, company, domain, linkedin_url. Enrichment is a follow-up action, not part of the build.
+7. **Write to CSV** — first_name, last_name, title, company, domain, linkedin_url (full last name, email, and LinkedIn URL come from the reveal step — un-revealed rows carry the Apollo `id` and obfuscated last name instead). Waterfall enrichment is a follow-up action, not part of the build.
 
 **Recurring pulls:** to keep a list fresh, re-run this workflow on a cadence and dedupe against people already in Tiga (`GET /api/v1/people` with a search filter) before enriching.
 
@@ -247,10 +243,12 @@ curl -X POST "$TIGA_BASE/api/v1/people/enrich-person" \
 ```
    Poll `GET $TIGA_BASE/api/v1/enrich/<enrich-id>` every 5-10s until `data_import_status` is not `"Running"`. Enrichment creates the person in Tiga and links them to their account — capture `person_id` for downstream steps.
 
-- **Commit to Tiga.** Create a list (`POST /api/v1/lists` with `object_type` `account` or `person`), create accounts (`POST /api/v1/account` — handle `409 Conflict` by looking up the existing record) or let enrichment create the people, then `POST /api/v1/lists/:id/add-members` with `object_ids` (not `member_ids`). Verify after add-members: `GET /api/v1/accounts` or `GET /api/v1/people` with `Tiga-Filter: {"list_id":"<id>"}` — `total_count` must be > 0 before handing off to signals or sequences.
+- **Commit a built CSV to Tiga (bulk — use this most of the time).** When you have a CSV of accounts and/or people ready to commit, upload it in one call with `POST /api/v1/import/upload`. It splits each row into an account + person, **upserts** (de-dupes by domain/linkedin/email — no manual `409` handling), sets `custom_columns`, adds everything to a list (`list_name` or `list_id`), and returns an `import_history_id` tying the whole commit together. Run `POST /api/v1/import/preflight` first to validate rows without writing. Max 5000 records per call. Full spec — record fields, preflight, custom columns, per-row results, list typing: `references/import-upload.md`.
+
+- **Commit to Tiga (granular alternative).** For one-off or highly granular commits, create a list (`POST /api/v1/lists` with `object_type` `account` or `person`), create accounts (`POST /api/v1/account` — handle `409 Conflict` by looking up the existing record) or let enrichment create the people, then `POST /api/v1/lists/:id/add-members` with `object_ids` (not `member_ids`). Verify after add-members: `GET /api/v1/accounts` or `GET /api/v1/people` with `Tiga-Filter: {"list_id":"<id>"}` — `total_count` must be > 0 before handing off to signals or sequences.
 
 - **Segment by territory.** Splitting lists is common — mostly by geo, sometimes by other parameters (size band, vertical, owner). Split the CSV or create per-territory Tiga lists. For routing to reps, use **flow-builder**.
 
 - **Run signals.** Large lists can be prioritized by finding signals (funding, hiring, tech stack — the **signals** skill). Also a great vector for outreach messaging, but not always necessary.
 
-- **Enroll in a sequence.** Hand off to **outreach** (`POST /api/v1/sequence/:id/add-people`).
+- **Enroll in a sequence.** Hand off to **sequence-runner** (`POST /api/v1/sequence/:id/add-people`).

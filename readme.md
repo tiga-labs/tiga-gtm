@@ -37,7 +37,7 @@ Once installed, the Tiga GTM skills will appear in your personal plugins list an
 
 **Sequences**
 - **Sequence Builder** — Author sequence steps and AI personalizations (p13ns)
-- **Outreach** — Enroll people in sequences and monitor performance
+- **Sequence Runner** — Enroll/remove people, monitor performance, and build engagement lists from opens/replies/clicks/bounces
 
 **CRM**
 - **CRM Ops** — Detect job changes, fill gaps, clean CRM data, and sync with HubSpot/Salesforce

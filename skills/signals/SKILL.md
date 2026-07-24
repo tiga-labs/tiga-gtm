@@ -137,4 +137,4 @@ GET /api/v1/person/columns?mode=merge_fields
 
 ---
 
-**Related skills:** **list-building** to build the account list and find people at top accounts; **outreach** to enroll them in sequences; **flow-builder** to build persistent automations that route leads based on signal results.
+**Related skills:** **list-building** to build the account list and find people at top accounts; **sequence-runner** to enroll them in sequences; **flow-builder** to build persistent automations that route leads based on signal results.
